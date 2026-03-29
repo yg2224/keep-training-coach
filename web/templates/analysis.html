@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<section class="card-grid">
+<section class="card-grid analysis-grid">
   <article class="card">
     <h2>Run Analysis</h2>
     <p>Total runs: {{ summary.total_runs }}</p>
@@ -9,17 +9,45 @@
     <p>Total elevation: {{ summary.total_elevation_m }} m</p>
   </article>
   <article class="card">
-    <h2>Monthly Trend</h2>
-    {% if monthly_stats %}
-    <ul>
-      {% for item in monthly_stats %}
-      <li>{{ item.month }} · {{ item.count }} runs · {{ item.distance }} km</li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <p>No data yet.</p>
-    {% endif %}
+    <h2>Plan Completion</h2>
+    <p>Done: {{ completion_summary.done }}</p>
+    <p>Planned: {{ completion_summary.planned }}</p>
+    <p>Completion rate: {{ completion_summary.completion_rate }}%</p>
   </article>
+</section>
+
+<section class="card-grid analysis-grid">
+  <article class="card">
+    <h2>Monthly Distance</h2>
+    <canvas id="monthly-chart"></canvas>
+  </article>
+  <article class="card">
+    <h2>Weekly Distance</h2>
+    <canvas id="weekly-chart"></canvas>
+  </article>
+</section>
+
+<section class="card-grid analysis-grid">
+  <article class="card">
+    <h2>Pace Distribution</h2>
+    <canvas id="pace-chart"></canvas>
+  </article>
+  <article class="card">
+    <h2>Distance Distribution</h2>
+    <canvas id="distance-chart"></canvas>
+  </article>
+</section>
+
+<section class="card">
+  <h2>Run Heatmap</h2>
+  <div class="heatmap-grid">
+    {% for item in heatmap_data %}
+    <div class="heatmap-cell" title="{{ item.date }} · {{ item.distance }} km">
+      <span>{{ item.date[8:] }}</span>
+      <strong>{{ item.distance }}</strong>
+    </div>
+    {% endfor %}
+  </div>
 </section>
 
 <section class="card">
@@ -30,4 +58,14 @@
     {% endfor %}
   </ul>
 </section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script id="analysis-data" type="application/json">
+{{ {
+  "monthly": monthly_stats,
+  "weekly": weekly_stats,
+  "pace": pace_distribution,
+  "distance": distance_distribution
+} | tojson }}
+</script>
 {% endblock %}

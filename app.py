@@ -1,12 +1,29 @@
+import calendar
+from datetime import datetime
 from pathlib import Path
 
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, jsonify, redirect, render_template, request, url_for
 
-from services.analysis import build_dashboard_summary, build_monthly_stats, build_prs, load_runs
+from services.analysis import (
+    build_completion_summary,
+    build_dashboard_summary,
+    build_distance_distribution,
+    build_heatmap_data,
+    build_monthly_stats,
+    build_pace_distribution,
+    build_prs,
+    build_weekly_stats,
+    load_runs,
+)
 from services.config_store import load_config, save_config
 from services.keep_sync import sync_keep_activities
-from services.logs import save_daily_log
-from services.planner import generate_training_plan, save_training_plan
+from services.logs import get_latest_log_for_date, save_daily_log
+from services.planner import (
+    generate_training_plan,
+    get_active_plan,
+    regenerate_plan,
+    save_training_plan,
+)
 from services.storage import get_connection, init_db
 
 
@@ -41,14 +58,7 @@ def create_app(test_config=None):
     def fetch_latest_plan():
         conn = get_connection(app.config["DATABASE"])
         try:
-            plan = conn.execute(
-                """
-                SELECT *
-                FROM training_plans
-                ORDER BY id DESC
-                LIMIT 1
-                """
-            ).fetchone()
+            plan = get_active_plan(conn)
             if not plan:
                 return None, []
             workouts = conn.execute(
@@ -56,11 +66,12 @@ def create_app(test_config=None):
                 SELECT *
                 FROM plan_workouts
                 WHERE plan_id = ?
+                  AND is_replaced = 0
                 ORDER BY plan_date ASC, id ASC
                 """,
                 (plan["id"],),
             ).fetchall()
-            return dict(plan), [dict(item) for item in workouts]
+            return plan, [dict(item) for item in workouts]
         finally:
             conn.close()
 
@@ -81,20 +92,146 @@ def create_app(test_config=None):
         finally:
             conn.close()
 
+    def parse_month(month_value):
+        if month_value:
+            return datetime.strptime(f"{month_value}-01", "%Y-%m-%d")
+        today = datetime.now()
+        return datetime(today.year, today.month, 1)
+
+    def build_month_calendar_payload(month_value):
+        month_start = parse_month(month_value)
+        month_key = month_start.strftime("%Y-%m")
+        prev_month = (
+            datetime(month_start.year - 1, 12, 1)
+            if month_start.month == 1
+            else datetime(month_start.year, month_start.month - 1, 1)
+        )
+        next_month = (
+            datetime(month_start.year + 1, 1, 1)
+            if month_start.month == 12
+            else datetime(month_start.year, month_start.month + 1, 1)
+        )
+
+        conn = get_connection(app.config["DATABASE"])
+        try:
+            active_plan = get_active_plan(conn)
+            workout_rows = []
+            if active_plan:
+                workout_rows = conn.execute(
+                    """
+                    SELECT *
+                    FROM plan_workouts
+                    WHERE plan_id = ?
+                      AND is_replaced = 0
+                      AND substr(plan_date, 1, 7) = ?
+                    ORDER BY plan_date ASC, id ASC
+                    """,
+                    (active_plan["id"], month_key),
+                ).fetchall()
+            workouts_by_date = {}
+            for row in workout_rows:
+                data = dict(row)
+                workouts_by_date.setdefault(data["plan_date"], data)
+
+            log_rows = conn.execute(
+                """
+                SELECT *
+                FROM daily_logs
+                WHERE substr(log_date, 1, 7) = ?
+                ORDER BY log_date ASC, id DESC
+                """,
+                (month_key,),
+            ).fetchall()
+            logs_by_date = {}
+            for row in log_rows:
+                data = dict(row)
+                logs_by_date.setdefault(data["log_date"], data)
+        finally:
+            conn.close()
+
+        weeks = []
+        for week in calendar.Calendar(firstweekday=6).monthdatescalendar(
+            month_start.year,
+            month_start.month,
+        ):
+            week_items = []
+            for day in week:
+                day_key = day.strftime("%Y-%m-%d")
+                if day.month != month_start.month:
+                    week_items.append(None)
+                    continue
+                workout = workouts_by_date.get(day_key)
+                latest_log = logs_by_date.get(day_key)
+                week_items.append(
+                    {
+                        "date": day_key,
+                        "day": day.day,
+                        "workout_type": workout["workout_type"] if workout else "",
+                        "completed": (
+                            latest_log["completed"]
+                            if latest_log
+                            else (workout["status"] if workout else "")
+                        ),
+                    }
+                )
+            weeks.append(week_items)
+
+        return {
+            "month": month_key,
+            "month_label": month_start.strftime("%B %Y"),
+            "prev_month": prev_month.strftime("%Y-%m"),
+            "next_month": next_month.strftime("%Y-%m"),
+            "weeks": weeks,
+        }
+
+    def build_day_payload(target_date):
+        conn = get_connection(app.config["DATABASE"])
+        try:
+            active_plan = get_active_plan(conn)
+            workout = None
+            if active_plan:
+                row = conn.execute(
+                    """
+                    SELECT *
+                    FROM plan_workouts
+                    WHERE plan_id = ?
+                      AND plan_date = ?
+                      AND is_replaced = 0
+                    ORDER BY id ASC
+                    LIMIT 1
+                    """,
+                    (active_plan["id"], target_date),
+                ).fetchone()
+                workout = dict(row) if row else None
+            latest_log = get_latest_log_for_date(conn, target_date)
+        finally:
+            conn.close()
+
+        return {
+            "date": target_date,
+            "workout": workout,
+            "latest_log": latest_log,
+            "completed": latest_log["completed"] if latest_log else (workout["status"] if workout else ""),
+        }
+
     @app.get("/")
     def index():
+        calendar_payload = build_month_calendar_payload(request.args.get("month"))
         runs = load_activity_rows()
         summary = build_dashboard_summary(runs)
         latest_plan, workouts = fetch_latest_plan()
+        config = load_config(app.config["CONFIG_PATH"])
         recent_runs = sorted(runs, key=lambda run: run["date"], reverse=True)[:5]
         return render_template(
             "index.html",
             page_title="Home",
             summary=summary,
-            recent_runs=recent_runs,
+            calendar_payload=calendar_payload,
             latest_plan=latest_plan,
             workouts=workouts[:5],
             recent_logs=fetch_recent_logs(5),
+            model_count=len(config["models"]),
+            recent_runs=recent_runs,
         )
 
     @app.post("/sync")
@@ -108,14 +245,28 @@ def create_app(test_config=None):
         )
         return redirect(url_for("index"))
 
+    @app.get("/api/calendar")
+    def calendar_month():
+        return jsonify(build_month_calendar_payload(request.args.get("month")))
+
+    @app.get("/api/day/<target_date>")
+    def day_detail(target_date):
+        return jsonify(build_day_payload(target_date))
+
     @app.get("/analysis")
     def analysis():
         runs = load_activity_rows()
+        latest_plan, workouts = fetch_latest_plan()
         return render_template(
             "analysis.html",
             page_title="Run Analysis",
             summary=build_dashboard_summary(runs),
             monthly_stats=build_monthly_stats(runs),
+            weekly_stats=build_weekly_stats(runs),
+            heatmap_data=build_heatmap_data(runs),
+            pace_distribution=build_pace_distribution(runs),
+            distance_distribution=build_distance_distribution(runs),
+            completion_summary=build_completion_summary(workouts),
             prs=build_prs(runs),
             runs=sorted(runs, key=lambda run: run["date"], reverse=True)[:20],
         )
@@ -123,17 +274,20 @@ def create_app(test_config=None):
     @app.get("/plans")
     def plans():
         latest_plan, workouts = fetch_latest_plan()
+        config = load_config(app.config["CONFIG_PATH"])
         return render_template(
             "plans.html",
             page_title="Training Plans",
             latest_plan=latest_plan,
             workouts=workouts,
+            models=config["models"],
         )
 
     @app.post("/plans/generate")
     def generate_plan():
         config = load_config(app.config["CONFIG_PATH"])
         plan_request = {
+            "model_key": request.form.get("model_key"),
             "plan_type": request.form.get("plan_type", "rolling_week"),
             "goal_race_distance": request.form.get("goal_race_distance") or None,
             "goal_race_date": request.form.get("goal_race_date") or None,
@@ -147,18 +301,42 @@ def create_app(test_config=None):
             conn.close()
         return redirect(url_for("plans"))
 
-    @app.get("/today")
-    def today():
-        _, workouts = fetch_latest_plan()
-        return render_template(
-            "today.html",
-            page_title="Daily Log",
-            workouts=workouts,
-            recent_logs=fetch_recent_logs(10),
-        )
+    @app.post("/plans/regenerate")
+    def regenerate_plan_route():
+        config = load_config(app.config["CONFIG_PATH"])
+        plan_request = {
+            "model_key": request.form.get("model_key"),
+            "plan_type": request.form.get("plan_type", "rolling_week"),
+            "goal_race_distance": request.form.get("goal_race_distance") or None,
+            "goal_race_date": request.form.get("goal_race_date") or None,
+            "goal_notes": request.form.get("goal_notes", ""),
+        }
+        conn = get_connection(app.config["DATABASE"])
+        try:
+            regenerate_plan(
+                conn,
+                config,
+                plan_request["model_key"],
+                plan_request,
+                lambda db_conn, db_config, req, model_config, active_plan: app.config[
+                    "PLAN_GENERATOR"
+                ](
+                    db_conn,
+                    db_config,
+                    {
+                        **req,
+                        "model_key": model_config["key"],
+                        "active_plan_id": active_plan["id"],
+                    },
+                ),
+                today=request.form.get("today"),
+            )
+        finally:
+            conn.close()
+        return redirect(url_for("plans"))
 
-    @app.post("/today")
-    def submit_today_log():
+    @app.post("/api/day-log")
+    def save_day_log_api():
         conn = get_connection(app.config["DATABASE"])
         try:
             save_daily_log(
@@ -176,31 +354,60 @@ def create_app(test_config=None):
                     "notes": request.form.get("notes") or "",
                 },
             )
+            payload = build_day_payload(request.form["log_date"])
         finally:
             conn.close()
-        return redirect(url_for("today"))
+        return jsonify({"status": "ok", "day": payload})
 
     @app.get("/settings")
     def settings():
+        config = load_config(app.config["CONFIG_PATH"])
+        models = config["models"] or [
+            {
+                "key": "",
+                "label": "",
+                "provider_name": "",
+                "base_url": "",
+                "api_key": "",
+                "model": "",
+            }
+        ]
         return render_template(
             "settings.html",
             page_title="Settings",
-            config=load_config(app.config["CONFIG_PATH"]),
+            config=config,
+            models=models,
         )
 
     @app.post("/settings")
     def save_settings():
+        model_keys = request.form.getlist("model_key")
+        model_labels = request.form.getlist("model_label")
+        model_provider_names = request.form.getlist("model_provider_name")
+        model_base_urls = request.form.getlist("model_base_url")
+        model_api_keys = request.form.getlist("model_api_key")
+        model_names = request.form.getlist("model_name")
+        models = []
+        for index, key in enumerate(model_keys):
+            values = {
+                "key": key,
+                "label": model_labels[index] if index < len(model_labels) else "",
+                "provider_name": (
+                    model_provider_names[index] if index < len(model_provider_names) else ""
+                ),
+                "base_url": model_base_urls[index] if index < len(model_base_urls) else "",
+                "api_key": model_api_keys[index] if index < len(model_api_keys) else "",
+                "model": model_names[index] if index < len(model_names) else "",
+            }
+            if any(values.values()):
+                models.append(values)
+
         payload = {
             "keep": {
                 "phone_number": request.form.get("phone_number", ""),
                 "password": request.form.get("password", ""),
             },
-            "ai": {
-                "provider_name": request.form.get("provider_name", ""),
-                "base_url": request.form.get("base_url", ""),
-                "api_key": request.form.get("api_key", ""),
-                "model": request.form.get("model", ""),
-            },
+            "models": models,
         }
         save_config(app.config["CONFIG_PATH"], payload)
         return redirect(url_for("settings"))

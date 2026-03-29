@@ -5,6 +5,14 @@
   <h2>Training Plans</h2>
   <form method="post" action="{{ url_for('generate_plan') }}" class="stack-form">
     <label>
+      Model
+      <select name="model_key" required>
+        {% for model in models %}
+        <option value="{{ model.key }}">{{ model.label }} · {{ model.model }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
       Plan type
       <select name="plan_type">
         <option value="rolling_week">Rolling next week</option>
@@ -28,9 +36,37 @@
 </section>
 
 <section class="card">
+  <h2>Regenerate Future Incomplete Workouts</h2>
+  <form method="post" action="{{ url_for('regenerate_plan_route') }}" class="stack-form">
+    <label>
+      Model
+      <select name="model_key" required>
+        {% for model in models %}
+        <option value="{{ model.key }}">{{ model.label }} · {{ model.model }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Plan type
+      <input type="text" name="plan_type" value="rolling_week">
+    </label>
+    <label>
+      Goal notes
+      <textarea name="goal_notes" rows="3" placeholder="How should the remaining week be adjusted?"></textarea>
+    </label>
+    <label>
+      Today override
+      <input type="date" name="today">
+    </label>
+    <button type="submit">Regenerate Future Incomplete Workouts</button>
+  </form>
+</section>
+
+<section class="card">
   <h2>Latest Plan</h2>
   {% if latest_plan %}
   <pre class="markdown-block">{{ latest_plan.plan_markdown }}</pre>
+  <p class="muted-text">Model key: {{ latest_plan.source_model_key }}</p>
   {% else %}
   <p>No plan generated yet.</p>
   {% endif %}

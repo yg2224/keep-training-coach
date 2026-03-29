@@ -6,17 +6,74 @@
     <h2>Run Summary</h2>
     <p>Total runs: {{ summary.total_runs }}</p>
     <p>Total distance: {{ summary.total_distance_km }} km</p>
+    <p>Saved models: {{ model_count }}</p>
   </article>
   <article class="card">
     <h2>Sync Keep</h2>
     <form method="post" action="{{ url_for('sync') }}">
       <button type="submit">Sync Running Data</button>
     </form>
+    {% if latest_plan %}
+    <p class="muted-text">Active plan: {{ latest_plan.plan_type }} · {{ latest_plan.model }}</p>
+    {% endif %}
   </article>
 </section>
 
+<section class="card calendar-shell">
+  <div class="calendar-header">
+    <div class="calendar-title-row">
+      <div class="calendar-title">{{ calendar_payload.month_label }}</div>
+      <div class="calendar-nav">
+        <a class="calendar-nav-btn" href="{{ url_for('index', month=calendar_payload.prev_month) }}">‹</a>
+        <a class="calendar-nav-btn" href="{{ url_for('index', month=calendar_payload.next_month) }}">›</a>
+      </div>
+    </div>
+    <div class="calendar-weekdays">
+      <span>Sun</span>
+      <span>Mon</span>
+      <span>Tue</span>
+      <span>Wed</span>
+      <span>Thu</span>
+      <span>Fri</span>
+      <span>Sat</span>
+    </div>
+  </div>
+
+  <div
+    id="calendar-root"
+    class="calendar-root"
+    data-day-url-base="/api/day/"
+    data-log-url="{{ url_for('save_day_log_api') }}"
+  >
+    {% for week in calendar_payload.weeks %}
+    {% for item in week %}
+    {% if item %}
+    <button type="button" class="calendar-day" data-date="{{ item.date }}">
+      <span class="calendar-day-number">{{ item.day }}</span>
+      {% if item.workout_type %}
+      <span class="calendar-day-type">{{ item.workout_type }}</span>
+      {% endif %}
+      {% if item.completed %}
+      <span class="calendar-day-status status-{{ item.completed }}">{{ item.completed }}</span>
+      {% endif %}
+    </button>
+    {% else %}
+    <div class="calendar-day calendar-day-empty"></div>
+    {% endif %}
+    {% endfor %}
+    {% endfor %}
+  </div>
+</section>
+
+<dialog id="day-modal" class="day-modal">
+  <form method="dialog" class="day-modal-close-row">
+    <button type="submit" class="ghost-button">Close</button>
+  </form>
+  <div id="day-modal-content" class="day-modal-content"></div>
+</dialog>
+
 <section class="card">
-  <h2>Recent Runs</h2>
+  <h2>Recent Synced Runs</h2>
   {% if recent_runs %}
   <ul>
     {% for run in recent_runs %}
@@ -25,33 +82,6 @@
   </ul>
   {% else %}
   <p>No runs yet.</p>
-  {% endif %}
-</section>
-
-<section class="card">
-  <h2>Current Plan</h2>
-  {% if latest_plan %}
-  <p>{{ latest_plan.plan_type }} · {{ latest_plan.model }}</p>
-  <ul>
-    {% for workout in workouts %}
-    <li>{{ workout.plan_date }} · {{ workout.title }} · {{ workout.status }}</li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p>No plan yet.</p>
-  {% endif %}
-</section>
-
-<section class="card">
-  <h2>Recent Logs</h2>
-  {% if recent_logs %}
-  <ul>
-    {% for log in recent_logs %}
-    <li>{{ log.log_date }} · {{ log.title or "Standalone" }} · {{ log.completed }}</li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p>No logs yet.</p>
   {% endif %}
 </section>
 {% endblock %}

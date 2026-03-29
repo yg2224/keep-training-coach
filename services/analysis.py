@@ -1,5 +1,5 @@
-from collections import defaultdict
-from datetime import datetime
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta
 
 
 DISTANCE_PR_TARGETS = [
@@ -7,6 +7,21 @@ DISTANCE_PR_TARGETS = [
     ("10 km", 10000),
     ("半马", 21097.5),
     ("全马", 42195),
+]
+
+PACE_BUCKETS = [
+    ("< 4:30", 0, 270),
+    ("4:30-5:00", 270, 300),
+    ("5:00-5:30", 300, 330),
+    ("5:30-6:00", 330, 360),
+    (">= 6:00", 360, float("inf")),
+]
+
+DISTANCE_BUCKETS = [
+    ("0-5 km", 0, 5000),
+    ("5-10 km", 5000, 10000),
+    ("10-15 km", 10000, 15000),
+    ("15 km+", 15000, float("inf")),
 ]
 
 
@@ -37,7 +52,9 @@ def filter_runs(items):
         distance = float(run.get("distance") or 0)
         moving_seconds = run["moving_seconds"]
         run["pace_seconds"] = (
-            moving_seconds / (distance / 1000) if distance > 0 and moving_seconds > 0 else None
+            moving_seconds / (distance / 1000)
+            if distance > 0 and moving_seconds > 0
+            else None
         )
         runs.append(run)
     return runs
@@ -66,7 +83,6 @@ def build_dashboard_summary(items):
         key=lambda run: run["pace_seconds"],
         default=None,
     )
-
     return {
         "total_runs": len(runs),
         "total_distance_km": round(total_distance, 2),
@@ -80,12 +96,10 @@ def build_dashboard_summary(items):
 def build_monthly_stats(items):
     runs = filter_runs(items)
     monthly = defaultdict(lambda: {"count": 0, "distance": 0.0})
-
     for run in runs:
         month = run["date"].strftime("%Y-%m")
         monthly[month]["count"] += 1
         monthly[month]["distance"] += float(run.get("distance") or 0) / 1000
-
     return [
         {
             "month": month,
@@ -94,6 +108,49 @@ def build_monthly_stats(items):
         }
         for month in sorted(monthly.keys())
     ]
+
+
+def build_weekly_stats(items):
+    runs = filter_runs(items)
+    weekly = defaultdict(lambda: {"count": 0, "distance": 0.0})
+    for run in runs:
+        week_start = (run["date"] - timedelta(days=run["date"].weekday())).date()
+        key = week_start.isoformat()
+        weekly[key]["count"] += 1
+        weekly[key]["distance"] += float(run.get("distance") or 0) / 1000
+    return [
+        {
+            "week_start": key,
+            "count": weekly[key]["count"],
+            "distance": round(weekly[key]["distance"], 2),
+        }
+        for key in sorted(weekly.keys())
+    ]
+
+
+def build_heatmap_data(items):
+    runs = filter_runs(items)
+    return [
+        {
+            "date": run["date"].strftime("%Y-%m-%d"),
+            "distance": round(float(run.get("distance") or 0) / 1000, 2),
+        }
+        for run in runs
+    ]
+
+
+def build_completion_summary(workouts):
+    counts = Counter(item.get("status", "planned") for item in workouts)
+    total = len(workouts)
+    done = counts.get("done", 0)
+    return {
+        "total": total,
+        "done": done,
+        "partial": counts.get("partial", 0),
+        "skipped": counts.get("skipped", 0),
+        "planned": counts.get("planned", 0),
+        "completion_rate": round((done / total) * 100, 1) if total else 0.0,
+    }
 
 
 def build_prs(items):
@@ -109,3 +166,24 @@ def build_prs(items):
         best = min(candidates, key=lambda run: run["pace_seconds"], default=None)
         records.append({"label": label, "target": target_distance, "run": best})
     return records
+
+
+def bucketize_runs(items, buckets, value_getter):
+    counts = Counter({label: 0 for label, _, _ in buckets})
+    for run in filter_runs(items):
+        value = value_getter(run)
+        if value is None:
+            continue
+        for label, lower, upper in buckets:
+            if lower <= value < upper:
+                counts[label] += 1
+                break
+    return [{"label": label, "value": counts[label]} for label, _, _ in buckets]
+
+
+def build_pace_distribution(items):
+    return bucketize_runs(items, PACE_BUCKETS, lambda run: run["pace_seconds"])
+
+
+def build_distance_distribution(items):
+    return bucketize_runs(items, DISTANCE_BUCKETS, lambda run: float(run.get("distance") or 0))

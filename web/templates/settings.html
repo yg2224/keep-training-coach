@@ -13,22 +13,37 @@
       Keep password
       <input type="password" name="password" value="{{ config.keep.password }}">
     </label>
-    <label>
-      Provider name
-      <input type="text" name="provider_name" value="{{ config.ai.provider_name }}">
-    </label>
-    <label>
-      Base URL
-      <input type="text" name="base_url" value="{{ config.ai.base_url }}">
-    </label>
-    <label>
-      API key
-      <input type="password" name="api_key" value="{{ config.ai.api_key }}">
-    </label>
-    <label>
-      Model
-      <input type="text" name="model" value="{{ config.ai.model }}">
-    </label>
+    <div class="model-config-list" id="model-config-list">
+      {% for model in models %}
+      <div class="model-config-card">
+        <label>
+          Model key
+          <input type="text" name="model_key" value="{{ model.key }}">
+        </label>
+        <label>
+          Label
+          <input type="text" name="model_label" value="{{ model.label }}">
+        </label>
+        <label>
+          Provider name
+          <input type="text" name="model_provider_name" value="{{ model.provider_name }}">
+        </label>
+        <label>
+          Base URL
+          <input type="text" name="model_base_url" value="{{ model.base_url }}">
+        </label>
+        <label>
+          API key
+          <input type="password" name="model_api_key" value="{{ model.api_key }}">
+        </label>
+        <label>
+          Model
+          <input type="text" name="model_name" value="{{ model.model }}">
+        </label>
+      </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="ghost-button" id="add-model-row">Add Model</button>
     <button type="submit">Save Settings</button>
   </form>
 </section>

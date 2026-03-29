@@ -45,3 +45,18 @@ def save_daily_log(conn, payload):
 
     conn.commit()
     return cursor.lastrowid
+
+
+def get_latest_log_for_date(conn, target_date):
+    row = conn.execute(
+        """
+        SELECT daily_logs.*, plan_workouts.title
+        FROM daily_logs
+        LEFT JOIN plan_workouts ON plan_workouts.id = daily_logs.plan_workout_id
+        WHERE log_date = ?
+        ORDER BY daily_logs.id DESC
+        LIMIT 1
+        """,
+        (target_date,),
+    ).fetchone()
+    return dict(row) if row else None
