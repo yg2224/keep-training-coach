@@ -4,9 +4,32 @@
 <section class="card">
   <h2>Settings</h2>
   <p>Keep account and AI provider configuration are stored locally on this machine.</p>
-  <div class="field-group">
-    <div><strong>Keep phone:</strong> {{ config.keep.phone_number }}</div>
-    <div><strong>AI model:</strong> {{ config.ai.model }}</div>
-  </div>
+  <form method="post" action="{{ url_for('save_settings') }}" class="stack-form">
+    <label>
+      Keep phone
+      <input type="text" name="phone_number" value="{{ config.keep.phone_number }}">
+    </label>
+    <label>
+      Keep password
+      <input type="password" name="password" value="{{ config.keep.password }}">
+    </label>
+    <label>
+      Provider name
+      <input type="text" name="provider_name" value="{{ config.ai.provider_name }}">
+    </label>
+    <label>
+      Base URL
+      <input type="text" name="base_url" value="{{ config.ai.base_url }}">
+    </label>
+    <label>
+      API key
+      <input type="password" name="api_key" value="{{ config.ai.api_key }}">
+    </label>
+    <label>
+      Model
+      <input type="text" name="model" value="{{ config.ai.model }}">
+    </label>
+    <button type="submit">Save Settings</button>
+  </form>
 </section>
 {% endblock %}

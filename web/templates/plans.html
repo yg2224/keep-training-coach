@@ -3,6 +3,49 @@
 {% block content %}
 <section class="card">
   <h2>Training Plans</h2>
-  <p>Generate a race plan or a rolling next-week plan after configuring your provider.</p>
+  <form method="post" action="{{ url_for('generate_plan') }}" class="stack-form">
+    <label>
+      Plan type
+      <select name="plan_type">
+        <option value="rolling_week">Rolling next week</option>
+        <option value="race_goal">Race goal plan</option>
+      </select>
+    </label>
+    <label>
+      Goal race distance
+      <input type="text" name="goal_race_distance" placeholder="21.1">
+    </label>
+    <label>
+      Goal race date
+      <input type="date" name="goal_race_date">
+    </label>
+    <label>
+      Goal notes
+      <textarea name="goal_notes" rows="4" placeholder="Current fitness, target pace, constraints"></textarea>
+    </label>
+    <button type="submit">Generate Plan</button>
+  </form>
+</section>
+
+<section class="card">
+  <h2>Latest Plan</h2>
+  {% if latest_plan %}
+  <pre class="markdown-block">{{ latest_plan.plan_markdown }}</pre>
+  {% else %}
+  <p>No plan generated yet.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Workouts</h2>
+  {% if workouts %}
+  <ul>
+    {% for workout in workouts %}
+    <li>{{ workout.plan_date }} · {{ workout.title }} · {{ workout.status }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No workouts yet.</p>
+  {% endif %}
 </section>
 {% endblock %}

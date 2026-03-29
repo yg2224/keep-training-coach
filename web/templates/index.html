@@ -8,8 +8,10 @@
     <p>Total distance: {{ summary.total_distance_km }} km</p>
   </article>
   <article class="card">
-    <h2>Next Step</h2>
-    <p>Save your Keep account, sync data, then generate a plan.</p>
+    <h2>Sync Keep</h2>
+    <form method="post" action="{{ url_for('sync') }}">
+      <button type="submit">Sync Running Data</button>
+    </form>
   </article>
 </section>
 
@@ -23,6 +25,33 @@
   </ul>
   {% else %}
   <p>No runs yet.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Current Plan</h2>
+  {% if latest_plan %}
+  <p>{{ latest_plan.plan_type }} · {{ latest_plan.model }}</p>
+  <ul>
+    {% for workout in workouts %}
+    <li>{{ workout.plan_date }} · {{ workout.title }} · {{ workout.status }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No plan yet.</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Recent Logs</h2>
+  {% if recent_logs %}
+  <ul>
+    {% for log in recent_logs %}
+    <li>{{ log.log_date }} · {{ log.title or "Standalone" }} · {{ log.completed }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No logs yet.</p>
   {% endif %}
 </section>
 {% endblock %}

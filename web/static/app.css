@@ -89,6 +89,52 @@ body {
   color: var(--muted);
 }
 
+.stack-form {
+  display: grid;
+  gap: 14px;
+}
+
+.stack-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.stack-form input,
+.stack-form select,
+.stack-form textarea,
+button {
+  font: inherit;
+}
+
+.stack-form input,
+.stack-form select,
+.stack-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+button {
+  border: none;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  padding: 12px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.markdown-block {
+  white-space: pre-wrap;
+  background: #f8f3ea;
+  border-radius: 14px;
+  padding: 14px;
+}
+
 @media (max-width: 900px) {
   .page-shell {
     grid-template-columns: 1fr;
