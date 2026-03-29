@@ -12,6 +12,26 @@ REQUIRED_DAY_FIELDS = [
 ]
 
 
+def get_active_plan(conn):
+    row = conn.execute(
+        """
+        SELECT *
+        FROM training_plans
+        WHERE is_active = 1
+        ORDER BY id DESC
+        LIMIT 1
+        """
+    ).fetchone()
+    return dict(row) if row else None
+
+
+def get_model_config(config, model_key):
+    for item in config.get("models", []):
+        if item.get("key") == model_key:
+            return item
+    raise RuntimeError(f"Unknown model key: {model_key}")
+
+
 def parse_plan_json(plan_id, plan_json):
     if isinstance(plan_json, str):
         plan_json = json.loads(plan_json)
@@ -41,6 +61,7 @@ def save_training_plan(conn, payload):
         if isinstance(plan_json_value, str)
         else json.dumps(plan_json_value, ensure_ascii=False)
     )
+    conn.execute("UPDATE training_plans SET is_active = 0 WHERE is_active = 1")
     cursor = conn.execute(
         """
         INSERT INTO training_plans (
@@ -51,10 +72,13 @@ def save_training_plan(conn, payload):
             goal_notes,
             provider,
             model,
+            is_active,
+            source_model_key,
+            replaced_plan_id,
             input_summary_json,
             plan_markdown,
             plan_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             payload["created_at"],
@@ -64,6 +88,9 @@ def save_training_plan(conn, payload):
             payload.get("goal_notes"),
             payload.get("provider"),
             payload.get("model"),
+            payload.get("is_active", 1),
+            payload.get("source_model_key"),
+            payload.get("replaced_plan_id"),
             payload["input_summary_json"],
             payload["plan_markdown"],
             stored_plan_json,
@@ -102,6 +129,47 @@ def save_training_plan(conn, payload):
 
     conn.commit()
     return plan_id
+
+
+def mark_replaced_workouts(conn, old_plan_id, new_plan_id, today):
+    conn.execute(
+        """
+        UPDATE plan_workouts
+        SET is_replaced = 1,
+            replaced_at = ?,
+            replaced_by_plan_id = ?
+        WHERE plan_id = ?
+          AND plan_date > ?
+          AND status != 'done'
+        """,
+        (
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            new_plan_id,
+            old_plan_id,
+            today,
+        ),
+    )
+
+
+def regenerate_plan(conn, config, model_key, plan_request, generator, today=None):
+    active_plan = get_active_plan(conn)
+    if not active_plan:
+        raise RuntimeError("No active plan to regenerate")
+
+    model_config = get_model_config(config, model_key)
+    generated_payload = generator(conn, config, plan_request, model_config, active_plan)
+    generated_payload["source_model_key"] = model_config["key"]
+    generated_payload["replaced_plan_id"] = active_plan["id"]
+    generated_payload["is_active"] = 1
+    new_plan_id = save_training_plan(conn, generated_payload)
+    mark_replaced_workouts(
+        conn,
+        old_plan_id=active_plan["id"],
+        new_plan_id=new_plan_id,
+        today=today or datetime.now().strftime("%Y-%m-%d"),
+    )
+    conn.commit()
+    return new_plan_id
 
 
 def build_planning_context(conn, plan_request):
@@ -148,7 +216,10 @@ def parse_ai_plan_response(text):
 def generate_training_plan(conn, config, plan_request):
     from openai import OpenAI
 
-    ai_config = config.get("ai", {})
+    model_key = plan_request.get("model_key")
+    if not model_key:
+        raise RuntimeError("Missing model_key")
+    ai_config = get_model_config(config, model_key)
     missing = [
         field
         for field in ("provider_name", "api_key", "model")
@@ -195,6 +266,7 @@ def generate_training_plan(conn, config, plan_request):
         "goal_notes": plan_request.get("goal_notes"),
         "provider": ai_config["provider_name"],
         "model": ai_config["model"],
+        "source_model_key": ai_config["key"],
         "input_summary_json": json.dumps(context, ensure_ascii=False),
         "plan_markdown": payload.get("plan_markdown", ""),
         "plan_json": plan_json,
