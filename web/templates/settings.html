@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="card">
+  <h2>Settings</h2>
+  <p>Keep account and AI provider configuration are stored locally on this machine.</p>
+  <div class="field-group">
+    <div><strong>Keep phone:</strong> {{ config.keep.phone_number }}</div>
+    <div><strong>AI model:</strong> {{ config.ai.model }}</div>
+  </div>
+</section>
+{% endblock %}

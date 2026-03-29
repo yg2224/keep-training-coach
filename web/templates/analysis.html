@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="card-grid">
+  <article class="card">
+    <h2>Run Analysis</h2>
+    <p>Total runs: {{ summary.total_runs }}</p>
+    <p>Total distance: {{ summary.total_distance_km }} km</p>
+    <p>Total elevation: {{ summary.total_elevation_m }} m</p>
+  </article>
+  <article class="card">
+    <h2>Monthly Trend</h2>
+    {% if monthly_stats %}
+    <ul>
+      {% for item in monthly_stats %}
+      <li>{{ item.month }} · {{ item.count }} runs · {{ item.distance }} km</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>No data yet.</p>
+    {% endif %}
+  </article>
+</section>
+
+<section class="card">
+  <h2>Approximate PRs</h2>
+  <ul>
+    {% for item in prs %}
+    <li>{{ item.label }} · {% if item.run %}{{ item.run.name }}{% else %}--{% endif %}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}
