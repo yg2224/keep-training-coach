@@ -1,31 +1,22 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<section class="card-grid">
-  <article class="card">
-    <h2>Run Summary</h2>
-    <p>Total runs: {{ summary.total_runs }}</p>
-    <p>Total distance: {{ summary.total_distance_km }} km</p>
-    <p>Saved models: {{ model_count }}</p>
-  </article>
-  <article class="card">
-    <h2>Sync Keep</h2>
-    <form method="post" action="{{ url_for('sync') }}">
-      <button type="submit">Sync Running Data</button>
-    </form>
-    {% if latest_plan %}
-    <p class="muted-text">Active plan: {{ latest_plan.plan_type }} · {{ latest_plan.model }}</p>
-    {% endif %}
-  </article>
-</section>
-
 <section class="card calendar-shell">
   <div class="calendar-header">
     <div class="calendar-title-row">
-      <div class="calendar-title">{{ calendar_payload.month_label }}</div>
-      <div class="calendar-nav">
-        <a class="calendar-nav-btn" href="{{ url_for('index', month=calendar_payload.prev_month) }}">‹</a>
-        <a class="calendar-nav-btn" href="{{ url_for('index', month=calendar_payload.next_month) }}">›</a>
+      <div>
+        <p class="section-kicker">Home</p>
+        <div class="calendar-title">{{ calendar_payload.month_label }}</div>
+        <p class="calendar-subtitle">Open any day to review the workout and save your completion log.</p>
+      </div>
+      <div class="calendar-header-actions">
+        <form method="post" action="{{ url_for('sync') }}" class="sync-inline-form">
+          <button type="submit" class="ghost-button sync-inline-button">Sync Keep</button>
+        </form>
+        <div class="calendar-nav">
+          <a class="calendar-nav-btn" href="{{ url_for('index', month=calendar_payload.prev_month) }}">‹</a>
+          <a class="calendar-nav-btn" href="{{ url_for('index', month=calendar_payload.next_month) }}">›</a>
+        </div>
       </div>
     </div>
     <div class="calendar-weekdays">
@@ -72,16 +63,32 @@
   <div id="day-modal-content" class="day-modal-content"></div>
 </dialog>
 
-<section class="card">
-  <h2>Recent Synced Runs</h2>
-  {% if recent_runs %}
-  <ul>
-    {% for run in recent_runs %}
-    <li>{{ run.start_date_local }} · {{ run.name }} · {{ (run.distance / 1000) | round(2) }} km</li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p>No runs yet.</p>
-  {% endif %}
+<section class="card-grid home-secondary-grid">
+  <article class="card">
+    <h2>Current Plan</h2>
+    {% if latest_plan %}
+    <p class="muted-text">Type: {{ latest_plan.plan_type }} - Model: {{ latest_plan.model }}</p>
+    <ul class="current-plan-list">
+      {% for workout in workouts[:3] %}
+      <li>{{ workout.plan_date }} - {{ workout.title }} - {{ workout.status }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>No plan generated yet.</p>
+    {% endif %}
+  </article>
+
+  <article class="card">
+    <h2>Recent Synced Runs</h2>
+    {% if recent_runs %}
+    <ul>
+      {% for run in recent_runs %}
+      <li>{{ run.start_date_local }} - {{ run.name }} - {{ (run.distance / 1000) | round(2) }} km</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>No runs yet.</p>
+    {% endif %}
+  </article>
 </section>
 {% endblock %}

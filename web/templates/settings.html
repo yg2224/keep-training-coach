@@ -3,48 +3,118 @@
 {% block content %}
 <section class="card">
   <h2>Settings</h2>
-  <p>Keep account and AI provider configuration are stored locally on this machine.</p>
-  <form method="post" action="{{ url_for('save_settings') }}" class="stack-form">
-    <label>
-      Keep phone
-      <input type="text" name="phone_number" value="{{ config.keep.phone_number }}">
-    </label>
-    <label>
-      Keep password
-      <input type="password" name="password" value="{{ config.keep.password }}">
-    </label>
-    <div class="model-config-list" id="model-config-list">
-      {% for model in models %}
-      <div class="model-config-card">
-        <label>
-          Model key
-          <input type="text" name="model_key" value="{{ model.key }}">
-        </label>
-        <label>
-          Label
-          <input type="text" name="model_label" value="{{ model.label }}">
-        </label>
-        <label>
-          Provider name
-          <input type="text" name="model_provider_name" value="{{ model.provider_name }}">
-        </label>
-        <label>
-          Base URL
-          <input type="text" name="model_base_url" value="{{ model.base_url }}">
-        </label>
-        <label>
-          API key
-          <input type="password" name="model_api_key" value="{{ model.api_key }}">
-        </label>
-        <label>
-          Model
-          <input type="text" name="model_name" value="{{ model.model }}">
-        </label>
-      </div>
-      {% endfor %}
+  <p>Keep account and model configurations stay on this local machine.</p>
+  <form method="post" action="{{ url_for('save_settings') }}" class="stack-form" id="settings-form">
+    <div class="settings-grid">
+      <section class="settings-panel keep-account-panel">
+        <div class="settings-panel-header">
+          <div>
+            <h3>Keep Account</h3>
+            <p class="muted-text">Only used when you click sync manually.</p>
+          </div>
+        </div>
+        <div class="compact-account-grid">
+          <label>
+            Keep phone
+            <input type="text" name="phone_number" value="{{ config.keep.phone_number }}">
+          </label>
+          <label>
+            Keep password
+            <input type="password" name="password" value="{{ config.keep.password }}">
+          </label>
+        </div>
+      </section>
+
+      <section class="settings-panel model-manager-card">
+        <div class="settings-panel-header">
+          <div>
+            <h3>Model Library</h3>
+            <p class="muted-text">Choose a saved provider/model config, preview it, then edit it in a focused dialog.</p>
+          </div>
+        </div>
+
+        <section class="model-manager">
+          <div class="model-toolbar">
+            <label>
+              Saved models
+              <select id="model-picker"></select>
+            </label>
+            <p class="muted-text" id="model-picker-summary"></p>
+            <div class="model-command-bar model-action-row">
+              <button type="button" class="ghost-button" id="add-model-button">Add Model</button>
+              <button type="button" class="ghost-button" id="edit-model-button">Edit Selected</button>
+              <button type="button" class="ghost-button danger-button" id="delete-model-button">Delete Selected</button>
+            </div>
+          </div>
+
+          <div id="model-preview" class="model-preview"></div>
+
+          <div class="model-empty-state" id="model-empty-state" hidden>
+            No model saved yet. Add one before generating a plan.
+          </div>
+
+          <div id="model-hidden-fields"></div>
+        </section>
+      </section>
     </div>
-    <button type="button" class="ghost-button" id="add-model-row">Add Model</button>
+
     <button type="submit">Save Settings</button>
   </form>
 </section>
+
+<script id="model-editor-data" type="application/json">{{ models | tojson }}</script>
+
+<dialog id="model-editor-modal" class="day-modal model-editor-modal">
+  <form method="dialog" class="day-modal-close-row">
+    <button type="submit" class="ghost-button">Close</button>
+  </form>
+  <form id="model-editor-form" class="day-modal-content">
+    <div class="modal-section model-editor-panel">
+      <div class="settings-panel-header">
+        <div>
+          <h3 id="model-editor-title">Add Model</h3>
+          <p class="muted-text model-editor-help">Create a reusable provider and model entry for plan generation and regeneration.</p>
+        </div>
+      </div>
+      <div class="model-editor-group">
+        <h4>Identity</h4>
+        <div class="model-editor-grid">
+          <label>
+            Model key
+            <input type="text" id="editor-model-key">
+          </label>
+          <label>
+            Label
+            <input type="text" id="editor-model-label">
+          </label>
+        </div>
+      </div>
+      <div class="model-editor-group">
+        <h4>Provider Connection</h4>
+        <div class="model-editor-grid">
+          <label>
+            Provider name
+            <input type="text" id="editor-model-provider-name">
+          </label>
+          <label>
+            Model
+            <input type="text" id="editor-model-name">
+          </label>
+          <label class="field-span-full">
+            Base URL
+            <input type="text" id="editor-model-base-url">
+          </label>
+          <label class="field-span-full">
+            API key
+            <input type="password" id="editor-model-api-key">
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="model-command-bar model-action-row">
+      <button type="button" class="ghost-button" id="cancel-model-button">Cancel</button>
+      <button type="submit" id="save-model-button">Save Model</button>
+    </div>
+  </form>
+</dialog>
 {% endblock %}

@@ -3,33 +3,50 @@
 {% block content %}
 <section class="card">
   <h2>Training Plans</h2>
-  <form method="post" action="{{ url_for('generate_plan') }}" class="stack-form">
+  <form
+    method="post"
+    action="{{ url_for('generate_plan') }}"
+    class="stack-form"
+    data-plan-type-form
+  >
     <label>
       Model
       <select name="model_key" required>
         {% for model in models %}
-        <option value="{{ model.key }}">{{ model.label }} · {{ model.model }}</option>
+        <option value="{{ model.key }}">{{ model.label }} - {{ model.model }}</option>
         {% endfor %}
       </select>
     </label>
     <label>
       Plan type
-      <select name="plan_type">
+      <select name="plan_type" data-plan-type-select>
         <option value="rolling_week">Rolling next week</option>
         <option value="race_goal">Race goal plan</option>
       </select>
     </label>
-    <label>
+    <label data-plan-field data-plan-modes="rolling_week">
+      Target distance
+      <input type="text" name="target_distance" placeholder="18">
+    </label>
+    <label data-plan-field data-plan-modes="rolling_week">
+      Target pace
+      <input type="text" name="target_pace" placeholder="5:20 /km">
+    </label>
+    <label data-plan-field data-plan-modes="race_goal" hidden>
       Goal race distance
       <input type="text" name="goal_race_distance" placeholder="21.1">
     </label>
-    <label>
+    <label data-plan-field data-plan-modes="race_goal" hidden>
       Goal race date
       <input type="date" name="goal_race_date">
     </label>
+    <label data-plan-field data-plan-modes="race_goal" hidden>
+      Goal race pace
+      <input type="text" name="goal_race_pace" placeholder="4:45 /km">
+    </label>
     <label>
       Goal notes
-      <textarea name="goal_notes" rows="4" placeholder="Current fitness, target pace, constraints"></textarea>
+      <textarea name="goal_notes" rows="4" placeholder="Current fitness, constraints, weekly availability"></textarea>
     </label>
     <button type="submit">Generate Plan</button>
   </form>
@@ -37,18 +54,46 @@
 
 <section class="card">
   <h2>Regenerate Future Incomplete Workouts</h2>
-  <form method="post" action="{{ url_for('regenerate_plan_route') }}" class="stack-form">
+  <form
+    method="post"
+    action="{{ url_for('regenerate_plan_route') }}"
+    class="stack-form"
+    data-plan-type-form
+  >
     <label>
       Model
       <select name="model_key" required>
         {% for model in models %}
-        <option value="{{ model.key }}">{{ model.label }} · {{ model.model }}</option>
+        <option value="{{ model.key }}">{{ model.label }} - {{ model.model }}</option>
         {% endfor %}
       </select>
     </label>
     <label>
       Plan type
-      <input type="text" name="plan_type" value="rolling_week">
+      <select name="plan_type" data-plan-type-select>
+        <option value="rolling_week">Rolling next week</option>
+        <option value="race_goal">Race goal plan</option>
+      </select>
+    </label>
+    <label data-plan-field data-plan-modes="rolling_week">
+      Target distance
+      <input type="text" name="target_distance" placeholder="18">
+    </label>
+    <label data-plan-field data-plan-modes="rolling_week">
+      Target pace
+      <input type="text" name="target_pace" placeholder="5:20 /km">
+    </label>
+    <label data-plan-field data-plan-modes="race_goal" hidden>
+      Goal race distance
+      <input type="text" name="goal_race_distance" placeholder="21.1">
+    </label>
+    <label data-plan-field data-plan-modes="race_goal" hidden>
+      Goal race date
+      <input type="date" name="goal_race_date">
+    </label>
+    <label data-plan-field data-plan-modes="race_goal" hidden>
+      Goal race pace
+      <input type="text" name="goal_race_pace" placeholder="4:45 /km">
     </label>
     <label>
       Goal notes
@@ -77,7 +122,7 @@
   {% if workouts %}
   <ul>
     {% for workout in workouts %}
-    <li>{{ workout.plan_date }} · {{ workout.title }} · {{ workout.status }}</li>
+    <li>{{ workout.plan_date }} - {{ workout.title }} - {{ workout.status }}</li>
     {% endfor %}
   </ul>
   {% else %}

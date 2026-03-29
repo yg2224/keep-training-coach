@@ -141,35 +141,292 @@ function bindCalendarModal() {
   });
 }
 
-function bindModelSettings() {
-  const addButton = document.getElementById("add-model-row");
-  const list = document.getElementById("model-config-list");
-  if (!addButton || !list) return;
-  addButton.addEventListener("click", () => {
-    const wrapper = document.createElement("div");
-    wrapper.className = "model-config-card";
-    wrapper.innerHTML = `
-      <label>Model key<input type="text" name="model_key"></label>
-      <label>Label<input type="text" name="model_label"></label>
-      <label>Provider name<input type="text" name="model_provider_name"></label>
-      <label>Base URL<input type="text" name="model_base_url"></label>
-      <label>API key<input type="password" name="model_api_key"></label>
-      <label>Model<input type="text" name="model_name"></label>
-    `;
-    list.appendChild(wrapper);
-  });
-}
-
 function readJsonScript(id) {
   const node = document.getElementById(id);
   if (!node) return null;
   return JSON.parse(node.textContent);
 }
 
+function bindModelSettings() {
+  const picker = document.getElementById("model-picker");
+  const hiddenFields = document.getElementById("model-hidden-fields");
+  const summary = document.getElementById("model-picker-summary");
+  const preview = document.getElementById("model-preview");
+  const emptyState = document.getElementById("model-empty-state");
+  const modal = document.getElementById("model-editor-modal");
+  const editorForm = document.getElementById("model-editor-form");
+  const title = document.getElementById("model-editor-title");
+  const addButton = document.getElementById("add-model-button");
+  const editButton = document.getElementById("edit-model-button");
+  const deleteButton = document.getElementById("delete-model-button");
+  const cancelButton = document.getElementById("cancel-model-button");
+  if (
+    !picker ||
+    !hiddenFields ||
+    !summary ||
+    !preview ||
+    !emptyState ||
+    !modal ||
+    !editorForm ||
+    !title ||
+    !addButton ||
+    !editButton ||
+    !deleteButton ||
+    !cancelButton
+  ) {
+    return;
+  }
+
+  const fields = {
+    key: document.getElementById("editor-model-key"),
+    label: document.getElementById("editor-model-label"),
+    provider_name: document.getElementById("editor-model-provider-name"),
+    base_url: document.getElementById("editor-model-base-url"),
+    api_key: document.getElementById("editor-model-api-key"),
+    model: document.getElementById("editor-model-name"),
+  };
+  let models = (readJsonScript("model-editor-data") || []).map((item) => ({
+    key: item.key || "",
+    label: item.label || "",
+    provider_name: item.provider_name || "",
+    base_url: item.base_url || "",
+    api_key: item.api_key || "",
+    model: item.model || "",
+  }));
+  let selectedIndex = models.length ? 0 : -1;
+  let editingIndex = null;
+
+  function createHiddenInput(name, value) {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = name;
+    input.value = value ?? "";
+    return input;
+  }
+
+  function syncHiddenFields() {
+    hiddenFields.innerHTML = "";
+    models.forEach((item) => {
+      hiddenFields.appendChild(createHiddenInput("model_key", item.key));
+      hiddenFields.appendChild(createHiddenInput("model_label", item.label));
+      hiddenFields.appendChild(
+        createHiddenInput("model_provider_name", item.provider_name),
+      );
+      hiddenFields.appendChild(createHiddenInput("model_base_url", item.base_url));
+      hiddenFields.appendChild(createHiddenInput("model_api_key", item.api_key));
+      hiddenFields.appendChild(createHiddenInput("model_name", item.model));
+    });
+  }
+
+  function readEditorModel() {
+    return {
+      key: fields.key.value.trim(),
+      label: fields.label.value.trim(),
+      provider_name: fields.provider_name.value.trim(),
+      base_url: fields.base_url.value.trim(),
+      api_key: fields.api_key.value.trim(),
+      model: fields.model.value.trim(),
+    };
+  }
+
+  function writeEditorModel(model) {
+    fields.key.value = model.key || "";
+    fields.label.value = model.label || "";
+    fields.provider_name.value = model.provider_name || "";
+    fields.base_url.value = model.base_url || "";
+    fields.api_key.value = model.api_key || "";
+    fields.model.value = model.model || "";
+  }
+
+  function buildModelSummary(model) {
+    return `${model.label || model.key || "Untitled"} - ${model.provider_name || "No provider"} - ${model.model || "No model"}`;
+  }
+
+  function maskApiKey(apiKey) {
+    if (!apiKey) return "Not set";
+    if (apiKey.length <= 6) return apiKey;
+    return `${apiKey.slice(0, 3)}***${apiKey.slice(-2)}`;
+  }
+
+  function renderModelPreview() {
+    if (selectedIndex < 0 || !models.length) {
+      preview.innerHTML = `
+        <div class="muted-text">
+          Select or create a model to review its provider details here.
+        </div>
+      `;
+      return;
+    }
+
+    const model = models[selectedIndex];
+    preview.innerHTML = `
+      <div>
+        <h3>${escapeHtml(model.label || model.key || "Untitled")}</h3>
+        <p class="muted-text">This entry will appear in plan generation and regeneration dropdowns.</p>
+      </div>
+      <div class="model-preview-grid">
+        <div class="model-preview-item">
+          <strong>Key</strong>
+          <span>${escapeHtml(model.key || "Not set")}</span>
+        </div>
+        <div class="model-preview-item">
+          <strong>Provider</strong>
+          <span>${escapeHtml(model.provider_name || "Not set")}</span>
+        </div>
+        <div class="model-preview-item">
+          <strong>Model</strong>
+          <span>${escapeHtml(model.model || "Not set")}</span>
+        </div>
+        <div class="model-preview-item">
+          <strong>Base URL</strong>
+          <span>${escapeHtml(model.base_url || "Not set")}</span>
+        </div>
+        <div class="model-preview-item">
+          <strong>API Key</strong>
+          <span>${escapeHtml(maskApiKey(model.api_key))}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderModelPicker() {
+    picker.innerHTML = "";
+    if (!models.length) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "No saved model";
+      picker.appendChild(option);
+      picker.disabled = true;
+      selectedIndex = -1;
+      summary.textContent = "Use Add Model to create the first model config.";
+      emptyState.hidden = false;
+      editButton.disabled = true;
+      deleteButton.disabled = true;
+      renderModelPreview();
+      syncHiddenFields();
+      return;
+    }
+
+    picker.disabled = false;
+    if (selectedIndex < 0 || selectedIndex >= models.length) {
+      selectedIndex = 0;
+    }
+    models.forEach((model, index) => {
+      const option = document.createElement("option");
+      option.value = String(index);
+      option.textContent = buildModelSummary(model);
+      picker.appendChild(option);
+    });
+    picker.value = String(selectedIndex);
+    summary.textContent = buildModelSummary(models[selectedIndex]);
+    emptyState.hidden = true;
+    editButton.disabled = false;
+    deleteButton.disabled = false;
+    renderModelPreview();
+    syncHiddenFields();
+  }
+
+  function openEditor(index) {
+    editingIndex = index;
+    if (index === null) {
+      title.textContent = "Add Model";
+      writeEditorModel({
+        key: "",
+        label: "",
+        provider_name: "",
+        base_url: "",
+        api_key: "",
+        model: "",
+      });
+    } else {
+      title.textContent = "Edit Model";
+      writeEditorModel(models[index]);
+    }
+    modal.showModal();
+  }
+
+  picker.addEventListener("change", () => {
+    selectedIndex = Number(picker.value);
+    renderModelPicker();
+  });
+
+  addButton.addEventListener("click", () => openEditor(null));
+
+  editButton.addEventListener("click", () => {
+    if (selectedIndex < 0) return;
+    openEditor(selectedIndex);
+  });
+
+  deleteButton.addEventListener("click", () => {
+    if (selectedIndex < 0) return;
+    if (!window.confirm("Delete the selected model config?")) {
+      return;
+    }
+    models.splice(selectedIndex, 1);
+    if (selectedIndex >= models.length) {
+      selectedIndex = models.length - 1;
+    }
+    renderModelPicker();
+  });
+
+  cancelButton.addEventListener("click", () => modal.close());
+
+  editorForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const model = readEditorModel();
+    if (editingIndex === null) {
+      models.push(model);
+      selectedIndex = models.length - 1;
+    } else {
+      models[editingIndex] = model;
+      selectedIndex = editingIndex;
+    }
+    renderModelPicker();
+    modal.close();
+  });
+
+  renderModelPicker();
+}
+
+function bindPlanTypeForms() {
+  const forms = document.querySelectorAll("[data-plan-type-form]");
+  forms.forEach((form) => {
+    const select = form.querySelector("[data-plan-type-select]");
+    const fields = form.querySelectorAll("[data-plan-field]");
+    if (!select || !fields.length) return;
+
+    const updateFields = () => {
+      const planType = select.value;
+      fields.forEach((field) => {
+        const modes = (field.dataset.planModes || "")
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
+        const visible = modes.includes(planType);
+        field.hidden = !visible;
+        field
+          .querySelectorAll("input, select, textarea")
+          .forEach((input) => {
+            input.disabled = !visible;
+          });
+      });
+    };
+
+    select.addEventListener("change", updateFields);
+    updateFields();
+  });
+}
+
+const chartRegistry = new Map();
+
 function createDatasetChart(canvasId, config) {
   const canvas = document.getElementById(canvasId);
   if (!canvas || typeof Chart === "undefined") return;
-  new Chart(canvas, config);
+  const existingChart = chartRegistry.get(canvasId);
+  if (existingChart) {
+    existingChart.destroy();
+  }
+  chartRegistry.set(canvasId, new Chart(canvas, config));
 }
 
 function bindAnalysisCharts() {
@@ -257,4 +514,5 @@ function bindAnalysisCharts() {
 
 bindCalendarModal();
 bindModelSettings();
+bindPlanTypeForms();
 bindAnalysisCharts();

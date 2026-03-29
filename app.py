@@ -289,8 +289,11 @@ def create_app(test_config=None):
         plan_request = {
             "model_key": request.form.get("model_key"),
             "plan_type": request.form.get("plan_type", "rolling_week"),
+            "target_distance": request.form.get("target_distance") or None,
+            "target_pace": request.form.get("target_pace") or None,
             "goal_race_distance": request.form.get("goal_race_distance") or None,
             "goal_race_date": request.form.get("goal_race_date") or None,
+            "goal_race_pace": request.form.get("goal_race_pace") or None,
             "goal_notes": request.form.get("goal_notes", ""),
         }
         conn = get_connection(app.config["DATABASE"])
@@ -307,8 +310,11 @@ def create_app(test_config=None):
         plan_request = {
             "model_key": request.form.get("model_key"),
             "plan_type": request.form.get("plan_type", "rolling_week"),
+            "target_distance": request.form.get("target_distance") or None,
+            "target_pace": request.form.get("target_pace") or None,
             "goal_race_distance": request.form.get("goal_race_distance") or None,
             "goal_race_date": request.form.get("goal_race_date") or None,
+            "goal_race_pace": request.form.get("goal_race_pace") or None,
             "goal_notes": request.form.get("goal_notes", ""),
         }
         conn = get_connection(app.config["DATABASE"])

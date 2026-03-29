@@ -19,34 +19,63 @@
 <section class="card-grid analysis-grid">
   <article class="card">
     <h2>Monthly Distance</h2>
-    <canvas id="monthly-chart"></canvas>
+    <div class="chart-frame">
+      <canvas id="monthly-chart"></canvas>
+    </div>
   </article>
   <article class="card">
     <h2>Weekly Distance</h2>
-    <canvas id="weekly-chart"></canvas>
+    <div class="chart-frame">
+      <canvas id="weekly-chart"></canvas>
+    </div>
   </article>
 </section>
 
 <section class="card-grid analysis-grid">
   <article class="card">
     <h2>Pace Distribution</h2>
-    <canvas id="pace-chart"></canvas>
+    <div class="chart-frame">
+      <canvas id="pace-chart"></canvas>
+    </div>
   </article>
   <article class="card">
     <h2>Distance Distribution</h2>
-    <canvas id="distance-chart"></canvas>
+    <div class="chart-frame">
+      <canvas id="distance-chart"></canvas>
+    </div>
   </article>
 </section>
 
 <section class="card">
   <h2>Run Heatmap</h2>
-  <div class="heatmap-grid">
-    {% for item in heatmap_data %}
-    <div class="heatmap-cell" title="{{ item.date }} · {{ item.distance }} km">
-      <span>{{ item.date[8:] }}</span>
-      <strong>{{ item.distance }}</strong>
+  <div class="heatmap-shell">
+    <div class="heatmap-months">
+      <span class="heatmap-month-spacer"></span>
+      <div class="heatmap-month-track">
+        {% for item in heatmap_data.month_labels %}
+        <span class="heatmap-month-label" style="grid-column: {{ item.column }};">{{ item.label }}</span>
+        {% endfor %}
+      </div>
     </div>
-    {% endfor %}
+    <div class="heatmap-content">
+      <div class="heatmap-weekday-column">
+        {% for label in heatmap_data.weekday_labels %}
+        <span>{{ label }}</span>
+        {% endfor %}
+      </div>
+      <div class="heatmap-board">
+        {% for week in heatmap_data.weeks %}
+        <div class="heatmap-week">
+          {% for day in week.days %}
+          <div
+            class="heatmap-cell heatmap-level-{{ day.level }}"
+            title="{{ day.date }} - {{ day.distance }} km"
+          ></div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
   </div>
 </section>
 
@@ -54,7 +83,7 @@
   <h2>Approximate PRs</h2>
   <ul>
     {% for item in prs %}
-    <li>{{ item.label }} · {% if item.run %}{{ item.run.name }}{% else %}--{% endif %}</li>
+    <li>{{ item.label }} - {% if item.run %}{{ item.run.name }}{% else %}--{% endif %}</li>
     {% endfor %}
   </ul>
 </section>

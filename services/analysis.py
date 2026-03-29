@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 DISTANCE_PR_TARGETS = [
     ("5 km", 5000),
     ("10 km", 10000),
-    ("半马", 21097.5),
-    ("全马", 42195),
+    ("Half Marathon", 21097.5),
+    ("Marathon", 42195),
 ]
 
 PACE_BUCKETS = [
@@ -22,6 +22,15 @@ DISTANCE_BUCKETS = [
     ("5-10 km", 5000, 10000),
     ("10-15 km", 10000, 15000),
     ("15 km+", 15000, float("inf")),
+]
+
+HEATMAP_WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+HEATMAP_LEVELS = [
+    (0, 0),
+    (1, 0.01),
+    (2, 5.0),
+    (3, 10.0),
+    (4, 15.0),
 ]
 
 
@@ -128,15 +137,77 @@ def build_weekly_stats(items):
     ]
 
 
-def build_heatmap_data(items):
+def parse_heatmap_today(today):
+    if today is None:
+        return datetime.now().date()
+    if isinstance(today, str):
+        return datetime.strptime(today, "%Y-%m-%d").date()
+    if isinstance(today, datetime):
+        return today.date()
+    return today
+
+
+def get_heatmap_level(distance):
+    level = 0
+    for candidate, threshold in HEATMAP_LEVELS:
+        if distance >= threshold:
+            level = candidate
+    return level
+
+
+def build_heatmap_data(items, weeks=26, today=None):
     runs = filter_runs(items)
-    return [
-        {
-            "date": run["date"].strftime("%Y-%m-%d"),
-            "distance": round(float(run.get("distance") or 0) / 1000, 2),
-        }
-        for run in runs
-    ]
+    distance_by_date = defaultdict(float)
+    for run in runs:
+        distance_by_date[run["date"].date().isoformat()] += float(run.get("distance") or 0) / 1000
+
+    end_date = parse_heatmap_today(today)
+    current_week_start = end_date - timedelta(days=(end_date.weekday() + 1) % 7)
+    first_week_start = current_week_start - timedelta(weeks=weeks - 1)
+
+    month_labels = []
+    seen_months = set()
+    visible_month = first_week_start.strftime("%Y-%m")
+    month_labels.append({"label": first_week_start.strftime("%b"), "column": 1})
+    seen_months.add(visible_month)
+
+    weeks_data = []
+    for week_index in range(weeks):
+        week_start = first_week_start + timedelta(weeks=week_index)
+        days = []
+        for day_offset, weekday_label in enumerate(HEATMAP_WEEKDAY_LABELS):
+            cell_date = week_start + timedelta(days=day_offset)
+            date_key = cell_date.isoformat()
+            distance = round(distance_by_date.get(date_key, 0.0), 2)
+            days.append(
+                {
+                    "date": date_key,
+                    "distance": distance,
+                    "level": get_heatmap_level(distance),
+                    "weekday": weekday_label,
+                }
+            )
+            month_key = cell_date.strftime("%Y-%m")
+            if cell_date.day == 1 and month_key not in seen_months:
+                month_labels.append(
+                    {
+                        "label": cell_date.strftime("%b"),
+                        "column": week_index + 1,
+                    }
+                )
+                seen_months.add(month_key)
+        weeks_data.append(
+            {
+                "week_start": week_start.isoformat(),
+                "days": days,
+            }
+        )
+
+    return {
+        "weeks": weeks_data,
+        "weekday_labels": HEATMAP_WEEKDAY_LABELS,
+        "month_labels": month_labels,
+    }
 
 
 def build_completion_summary(workouts):
