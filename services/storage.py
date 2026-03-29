@@ -28,9 +28,13 @@ CREATE TABLE IF NOT EXISTS training_plans (
     goal_notes TEXT,
     provider TEXT,
     model TEXT,
+    is_active INTEGER NOT NULL DEFAULT 0,
+    source_model_key TEXT,
+    replaced_plan_id INTEGER,
     input_summary_json TEXT NOT NULL,
     plan_markdown TEXT NOT NULL,
-    plan_json TEXT NOT NULL
+    plan_json TEXT NOT NULL,
+    FOREIGN KEY(replaced_plan_id) REFERENCES training_plans(id)
 );
 
 CREATE TABLE IF NOT EXISTS plan_workouts (
@@ -44,6 +48,9 @@ CREATE TABLE IF NOT EXISTS plan_workouts (
     target_pace TEXT,
     notes TEXT,
     status TEXT NOT NULL DEFAULT 'planned',
+    is_replaced INTEGER NOT NULL DEFAULT 0,
+    replaced_at TEXT,
+    replaced_by_plan_id INTEGER,
     FOREIGN KEY(plan_id) REFERENCES training_plans(id)
 );
 
@@ -66,6 +73,14 @@ CREATE TABLE IF NOT EXISTS daily_logs (
 """
 
 
+def ensure_column(conn, table_name, column_name, column_sql):
+    columns = {
+        row["name"] for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    }
+    if column_name not in columns:
+        conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_sql}")
+
+
 def get_connection(db_path):
     db_path = Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -78,7 +93,12 @@ def init_db(db_path):
     conn = get_connection(db_path)
     try:
         conn.executescript(SCHEMA)
+        ensure_column(conn, "training_plans", "is_active", "is_active INTEGER NOT NULL DEFAULT 0")
+        ensure_column(conn, "training_plans", "source_model_key", "source_model_key TEXT")
+        ensure_column(conn, "training_plans", "replaced_plan_id", "replaced_plan_id INTEGER")
+        ensure_column(conn, "plan_workouts", "is_replaced", "is_replaced INTEGER NOT NULL DEFAULT 0")
+        ensure_column(conn, "plan_workouts", "replaced_at", "replaced_at TEXT")
+        ensure_column(conn, "plan_workouts", "replaced_by_plan_id", "replaced_by_plan_id INTEGER")
         conn.commit()
     finally:
         conn.close()
-
