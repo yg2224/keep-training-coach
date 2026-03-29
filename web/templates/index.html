@@ -5,28 +5,24 @@
   <div class="calendar-header">
     <div class="calendar-title-row">
       <div>
-        <p class="section-kicker">Home</p>
+        <p class="section-kicker">{{ t('home.kicker') }}</p>
         <div class="calendar-title">{{ calendar_payload.month_label }}</div>
-        <p class="calendar-subtitle">Open any day to review the workout and save your completion log.</p>
+        <p class="calendar-subtitle">{{ t('home.calendar_subtitle') }}</p>
       </div>
       <div class="calendar-header-actions">
-        <form method="post" action="{{ url_for('sync') }}" class="sync-inline-form">
-          <button type="submit" class="ghost-button sync-inline-button">Sync Keep</button>
+        <form method="post" action="{{ url_for_lang('sync') }}" class="sync-inline-form">
+          <button type="submit" class="ghost-button sync-inline-button">{{ t('home.sync') }}</button>
         </form>
         <div class="calendar-nav">
-          <a class="calendar-nav-btn" href="{{ url_for('index', month=calendar_payload.prev_month) }}">‹</a>
-          <a class="calendar-nav-btn" href="{{ url_for('index', month=calendar_payload.next_month) }}">›</a>
+          <a class="calendar-nav-btn" href="{{ url_for_lang('index', month=calendar_payload.prev_month) }}">&#8249;</a>
+          <a class="calendar-nav-btn" href="{{ url_for_lang('index', month=calendar_payload.next_month) }}">&#8250;</a>
         </div>
       </div>
     </div>
     <div class="calendar-weekdays">
-      <span>Sun</span>
-      <span>Mon</span>
-      <span>Tue</span>
-      <span>Wed</span>
-      <span>Thu</span>
-      <span>Fri</span>
-      <span>Sat</span>
+      {% for label in calendar_weekdays %}
+      <span>{{ label }}</span>
+      {% endfor %}
     </div>
   </div>
 
@@ -45,7 +41,7 @@
       <span class="calendar-day-type">{{ item.workout_type }}</span>
       {% endif %}
       {% if item.completed %}
-      <span class="calendar-day-status status-{{ item.completed }}">{{ item.completed }}</span>
+      <span class="calendar-day-status status-{{ item.completed }}">{{ status_label(item.completed) }}</span>
       {% endif %}
     </button>
     {% else %}
@@ -57,37 +53,38 @@
 </section>
 
 <dialog id="day-modal" class="day-modal">
-  <form method="dialog" class="day-modal-close-row">
-    <button type="submit" class="ghost-button">Close</button>
-  </form>
   <div id="day-modal-content" class="day-modal-content"></div>
 </dialog>
 
 <section class="card-grid home-secondary-grid">
   <article class="card">
-    <h2>Current Plan</h2>
+    <h2>{{ t('home.current_plan') }}</h2>
     {% if latest_plan %}
-    <p class="muted-text">Type: {{ latest_plan.plan_type }} - Model: {{ latest_plan.model }}</p>
+    <p class="muted-text">{{ t('home.type') }}: {{ plan_type_label(latest_plan.plan_type) }} | {{ t('home.model') }}: {{ latest_plan.model }}</p>
     <ul class="current-plan-list">
       {% for workout in workouts[:3] %}
-      <li>{{ workout.plan_date }} - {{ workout.title }} - {{ workout.status }}</li>
+      <li>{{ workout.plan_date }} - {{ workout.title }} - {{ status_label(workout.status) }}</li>
       {% endfor %}
     </ul>
     {% else %}
-    <p>No plan generated yet.</p>
+    <p>{{ t('home.no_plan') }}</p>
     {% endif %}
   </article>
 
   <article class="card">
-    <h2>Recent Synced Runs</h2>
+    <h2>{{ t('home.recent_runs') }}</h2>
     {% if recent_runs %}
     <ul>
       {% for run in recent_runs %}
-      <li>{{ run.start_date_local }} - {{ run.name }} - {{ (run.distance / 1000) | round(2) }} km</li>
+      <li>
+        <a class="activity-inline-link" href="{{ url_for_lang('activity_detail', run_id=run.run_id) }}">
+          {{ run.start_date_local }} - {{ run.name }} - {{ (run.distance / 1000) | round(2) }} km
+        </a>
+      </li>
       {% endfor %}
     </ul>
     {% else %}
-    <p>No runs yet.</p>
+    <p>{{ t('home.no_runs') }}</p>
     {% endif %}
   </article>
 </section>

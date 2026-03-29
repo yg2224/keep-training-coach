@@ -229,6 +229,8 @@ def generate_training_plan(conn, config, plan_request):
         raise RuntimeError(f"Missing AI config fields: {', '.join(missing)}")
 
     context = build_planning_context(conn, plan_request)
+    language = (plan_request.get("language") or "zh").lower()
+    output_language = "Simplified Chinese" if language == "zh" else "English"
     client = OpenAI(
         api_key=ai_config["api_key"],
         base_url=ai_config.get("base_url") or None,
@@ -242,7 +244,9 @@ def generate_training_plan(conn, config, plan_request):
                     "You are a running coach. Return JSON only with keys "
                     "'plan_markdown' and 'plan_json'. plan_json must include "
                     "'summary' and 'weeks[].days[]' with date, title, workout_type, "
-                    "target_distance_km, target_duration_min, target_pace, notes."
+                    "target_distance_km, target_duration_min, target_pace, notes. "
+                    f"Write all user-facing values in {output_language}, including "
+                    "plan_markdown, summary, day titles, workout_type labels, and notes."
                 ),
             },
             {

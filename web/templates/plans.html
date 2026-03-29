@@ -1,16 +1,23 @@
 {% extends "layout.html" %}
 
 {% block content %}
+<div
+  id="plans-job-status"
+  class="plan-job-status"
+  data-plans-results-url="{{ url_for_lang('plans_results_fragment') }}"
+  hidden
+></div>
 <section class="card">
-  <h2>Training Plans</h2>
+  <h2>{{ t('plans.generate_title') }}</h2>
   <form
     method="post"
-    action="{{ url_for('generate_plan') }}"
+    action="{{ url_for_lang('generate_plan') }}"
     class="stack-form"
     data-plan-type-form
+    data-plan-async-form
   >
     <label>
-      Model
+      {{ t('plans.model') }}
       <select name="model_key" required>
         {% for model in models %}
         <option value="{{ model.key }}">{{ model.label }} - {{ model.model }}</option>
@@ -18,50 +25,56 @@
       </select>
     </label>
     <label>
-      Plan type
+      {{ t('plans.plan_type') }}
       <select name="plan_type" data-plan-type-select>
-        <option value="rolling_week">Rolling next week</option>
-        <option value="race_goal">Race goal plan</option>
+        <option value="rolling_week">{{ t('plans.rolling_week') }}</option>
+        <option value="race_goal">{{ t('plans.race_goal') }}</option>
       </select>
     </label>
+    <p class="plan-type-notice" data-plan-type-notice aria-live="polite"></p>
     <label data-plan-field data-plan-modes="rolling_week">
-      Target distance
-      <input type="text" name="target_distance" placeholder="18">
+      {{ t('plans.target_distance') }}
+      <input type="text" name="target_distance" placeholder="{{ t('plans.target_distance_placeholder') }}">
     </label>
     <label data-plan-field data-plan-modes="rolling_week">
-      Target pace
-      <input type="text" name="target_pace" placeholder="5:20 /km">
+      {{ t('plans.target_pace') }}
+      <input type="text" name="target_pace" placeholder="{{ t('plans.target_pace_placeholder') }}">
     </label>
     <label data-plan-field data-plan-modes="race_goal" hidden>
-      Goal race distance
-      <input type="text" name="goal_race_distance" placeholder="21.1">
+      {{ t('plans.goal_race_distance') }}
+      <input type="text" name="goal_race_distance" placeholder="{{ t('plans.goal_race_distance_placeholder') }}">
     </label>
     <label data-plan-field data-plan-modes="race_goal" hidden>
-      Goal race date
-      <input type="date" name="goal_race_date">
+      {{ t('plans.goal_race_date') }}
+      <input type="date" name="goal_race_date" placeholder="{{ t('plans.goal_race_date_placeholder') }}">
     </label>
     <label data-plan-field data-plan-modes="race_goal" hidden>
-      Goal race pace
-      <input type="text" name="goal_race_pace" placeholder="4:45 /km">
+      {{ t('plans.goal_race_pace') }}
+      <input type="text" name="goal_race_pace" placeholder="{{ t('plans.goal_race_pace_placeholder') }}">
     </label>
     <label>
-      Goal notes
-      <textarea name="goal_notes" rows="4" placeholder="Current fitness, constraints, weekly availability"></textarea>
+      {{ t('plans.goal_notes') }}
+      <textarea name="goal_notes" rows="4" placeholder="{{ t('plans.goal_notes_placeholder') }}"></textarea>
     </label>
-    <button type="submit">Generate Plan</button>
+    <button
+      type="submit"
+      data-idle-text="{{ t('plans.generate_button') }}"
+      data-busy-text="{{ t('plans.generate_button_busy') }}"
+    >{{ t('plans.generate_button') }}</button>
   </form>
 </section>
 
 <section class="card">
-  <h2>Regenerate Future Incomplete Workouts</h2>
+  <h2>{{ t('plans.regenerate_title') }}</h2>
   <form
     method="post"
-    action="{{ url_for('regenerate_plan_route') }}"
+    action="{{ url_for_lang('regenerate_plan_route') }}"
     class="stack-form"
     data-plan-type-form
+    data-plan-async-form
   >
     <label>
-      Model
+      {{ t('plans.model') }}
       <select name="model_key" required>
         {% for model in models %}
         <option value="{{ model.key }}">{{ model.label }} - {{ model.model }}</option>
@@ -69,64 +82,48 @@
       </select>
     </label>
     <label>
-      Plan type
+      {{ t('plans.plan_type') }}
       <select name="plan_type" data-plan-type-select>
-        <option value="rolling_week">Rolling next week</option>
-        <option value="race_goal">Race goal plan</option>
+        <option value="rolling_week">{{ t('plans.rolling_week') }}</option>
+        <option value="race_goal">{{ t('plans.race_goal') }}</option>
       </select>
     </label>
+    <p class="plan-type-notice" data-plan-type-notice aria-live="polite"></p>
     <label data-plan-field data-plan-modes="rolling_week">
-      Target distance
-      <input type="text" name="target_distance" placeholder="18">
+      {{ t('plans.target_distance') }}
+      <input type="text" name="target_distance" placeholder="{{ t('plans.target_distance_placeholder') }}">
     </label>
     <label data-plan-field data-plan-modes="rolling_week">
-      Target pace
-      <input type="text" name="target_pace" placeholder="5:20 /km">
+      {{ t('plans.target_pace') }}
+      <input type="text" name="target_pace" placeholder="{{ t('plans.target_pace_placeholder') }}">
     </label>
     <label data-plan-field data-plan-modes="race_goal" hidden>
-      Goal race distance
-      <input type="text" name="goal_race_distance" placeholder="21.1">
+      {{ t('plans.goal_race_distance') }}
+      <input type="text" name="goal_race_distance" placeholder="{{ t('plans.goal_race_distance_placeholder') }}">
     </label>
     <label data-plan-field data-plan-modes="race_goal" hidden>
-      Goal race date
-      <input type="date" name="goal_race_date">
+      {{ t('plans.goal_race_date') }}
+      <input type="date" name="goal_race_date" placeholder="{{ t('plans.goal_race_date_placeholder') }}">
     </label>
     <label data-plan-field data-plan-modes="race_goal" hidden>
-      Goal race pace
-      <input type="text" name="goal_race_pace" placeholder="4:45 /km">
+      {{ t('plans.goal_race_pace') }}
+      <input type="text" name="goal_race_pace" placeholder="{{ t('plans.goal_race_pace_placeholder') }}">
     </label>
     <label>
-      Goal notes
-      <textarea name="goal_notes" rows="3" placeholder="How should the remaining week be adjusted?"></textarea>
+      {{ t('plans.goal_notes') }}
+      <textarea name="goal_notes" rows="3" placeholder="{{ t('plans.regenerate_notes_example') }}"></textarea>
     </label>
     <label>
-      Today override
-      <input type="date" name="today">
+      {{ t('plans.today_override') }}
+      <input type="date" name="today" placeholder="{{ t('plans.today_override_placeholder') }}">
     </label>
-    <button type="submit">Regenerate Future Incomplete Workouts</button>
+    <button
+      type="submit"
+      data-idle-text="{{ t('plans.regenerate_button') }}"
+      data-busy-text="{{ t('plans.regenerate_button_busy') }}"
+    >{{ t('plans.regenerate_button') }}</button>
   </form>
 </section>
 
-<section class="card">
-  <h2>Latest Plan</h2>
-  {% if latest_plan %}
-  <pre class="markdown-block">{{ latest_plan.plan_markdown }}</pre>
-  <p class="muted-text">Model key: {{ latest_plan.source_model_key }}</p>
-  {% else %}
-  <p>No plan generated yet.</p>
-  {% endif %}
-</section>
-
-<section class="card">
-  <h2>Workouts</h2>
-  {% if workouts %}
-  <ul>
-    {% for workout in workouts %}
-    <li>{{ workout.plan_date }} - {{ workout.title }} - {{ workout.status }}</li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p>No workouts yet.</p>
-  {% endif %}
-</section>
+{% include "plans_results.html" %}
 {% endblock %}

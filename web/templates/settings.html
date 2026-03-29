@@ -2,25 +2,25 @@
 
 {% block content %}
 <section class="card">
-  <h2>Settings</h2>
-  <p>Keep account and model configurations stay on this local machine.</p>
-  <form method="post" action="{{ url_for('save_settings') }}" class="stack-form" id="settings-form">
+  <h2>{{ t('settings.title') }}</h2>
+  <p>{{ t('settings.subtitle') }}</p>
+  <form method="post" action="{{ url_for_lang('save_settings') }}" class="stack-form" id="settings-form">
     <div class="settings-grid">
       <section class="settings-panel keep-account-panel">
         <div class="settings-panel-header">
           <div>
-            <h3>Keep Account</h3>
-            <p class="muted-text">Only used when you click sync manually.</p>
+            <h3>{{ t('settings.keep_account') }}</h3>
+            <p class="muted-text">{{ t('settings.keep_account_help') }}</p>
           </div>
         </div>
         <div class="compact-account-grid">
           <label>
-            Keep phone
-            <input type="text" name="phone_number" value="{{ config.keep.phone_number }}">
+            {{ t('settings.keep_phone') }}
+            <input type="text" name="phone_number" value="{{ config.keep.phone_number }}" placeholder="{{ t('settings.keep_phone_placeholder') }}">
           </label>
           <label>
-            Keep password
-            <input type="password" name="password" value="{{ config.keep.password }}">
+            {{ t('settings.keep_password') }}
+            <input type="password" name="password" value="{{ config.keep.password }}" placeholder="{{ t('settings.keep_password_placeholder') }}">
           </label>
         </div>
       </section>
@@ -28,29 +28,29 @@
       <section class="settings-panel model-manager-card">
         <div class="settings-panel-header">
           <div>
-            <h3>Model Library</h3>
-            <p class="muted-text">Choose a saved provider/model config, preview it, then edit it in a focused dialog.</p>
+            <h3>{{ t('settings.model_library') }}</h3>
+            <p class="muted-text">{{ t('settings.model_library_help') }}</p>
           </div>
         </div>
 
         <section class="model-manager">
           <div class="model-toolbar">
             <label>
-              Saved models
+              {{ t('settings.saved_models') }}
               <select id="model-picker"></select>
             </label>
             <p class="muted-text" id="model-picker-summary"></p>
             <div class="model-command-bar model-action-row">
-              <button type="button" class="ghost-button" id="add-model-button">Add Model</button>
-              <button type="button" class="ghost-button" id="edit-model-button">Edit Selected</button>
-              <button type="button" class="ghost-button danger-button" id="delete-model-button">Delete Selected</button>
+              <button type="button" class="ghost-button" id="add-model-button">{{ t('settings.add_model') }}</button>
+              <button type="button" class="ghost-button" id="edit-model-button">{{ t('settings.edit_selected') }}</button>
+              <button type="button" class="ghost-button danger-button" id="delete-model-button">{{ t('settings.delete_selected') }}</button>
             </div>
           </div>
 
           <div id="model-preview" class="model-preview"></div>
 
           <div class="model-empty-state" id="model-empty-state" hidden>
-            No model saved yet. Add one before generating a plan.
+            {{ t('settings.no_model_saved') }}
           </div>
 
           <div id="model-hidden-fields"></div>
@@ -58,7 +58,7 @@
       </section>
     </div>
 
-    <button type="submit">Save Settings</button>
+    <button type="submit">{{ t('settings.save') }}</button>
   </form>
 </section>
 
@@ -66,54 +66,54 @@
 
 <dialog id="model-editor-modal" class="day-modal model-editor-modal">
   <form method="dialog" class="day-modal-close-row">
-    <button type="submit" class="ghost-button">Close</button>
+    <button type="submit" class="ghost-button">{{ t('common.close') }}</button>
   </form>
   <form id="model-editor-form" class="day-modal-content">
     <div class="modal-section model-editor-panel">
       <div class="settings-panel-header">
         <div>
-          <h3 id="model-editor-title">Add Model</h3>
-          <p class="muted-text model-editor-help">Create a reusable provider and model entry for plan generation and regeneration.</p>
+          <h3 id="model-editor-title">{{ t('settings.add_model_title') }}</h3>
+          <p class="muted-text model-editor-help">{{ t('settings.model_editor_help') }}</p>
         </div>
       </div>
       <div class="model-editor-group">
-        <h4>Identity</h4>
+        <h4>{{ t('settings.identity') }}</h4>
         <div class="model-editor-grid">
           <label>
-            Model key
-            <input type="text" id="editor-model-key">
+            {{ t('settings.model_key') }}
+            <input type="text" id="editor-model-key" placeholder="{{ t('settings.model_key_placeholder') }}">
           </label>
           <label>
-            Label
-            <input type="text" id="editor-model-label">
+            {{ t('settings.label') }}
+            <input type="text" id="editor-model-label" placeholder="{{ t('settings.label_placeholder') }}">
           </label>
         </div>
       </div>
       <div class="model-editor-group">
-        <h4>Provider Connection</h4>
+        <h4>{{ t('settings.provider_connection') }}</h4>
         <div class="model-editor-grid">
           <label>
-            Provider name
-            <input type="text" id="editor-model-provider-name">
+            {{ t('settings.provider_name') }}
+            <input type="text" id="editor-model-provider-name" placeholder="{{ t('settings.provider_name_placeholder') }}">
           </label>
           <label>
-            Model
-            <input type="text" id="editor-model-name">
+            {{ t('settings.model_name') }}
+            <input type="text" id="editor-model-name" placeholder="{{ t('settings.model_name_placeholder') }}">
           </label>
           <label class="field-span-full">
-            Base URL
-            <input type="text" id="editor-model-base-url">
+            {{ t('settings.base_url') }}
+            <input type="text" id="editor-model-base-url" placeholder="{{ t('settings.base_url_placeholder') }}">
           </label>
           <label class="field-span-full">
-            API key
-            <input type="password" id="editor-model-api-key">
+            {{ t('settings.api_key') }}
+            <input type="password" id="editor-model-api-key" placeholder="{{ t('settings.api_key_placeholder') }}">
           </label>
         </div>
       </div>
     </div>
     <div class="model-command-bar model-action-row">
-      <button type="button" class="ghost-button" id="cancel-model-button">Cancel</button>
-      <button type="submit" id="save-model-button">Save Model</button>
+      <button type="button" class="ghost-button" id="cancel-model-button">{{ t('common.cancel') }}</button>
+      <button type="submit" id="save-model-button">{{ t('settings.save_model') }}</button>
     </div>
   </form>
 </dialog>

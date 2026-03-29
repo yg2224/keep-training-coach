@@ -1,3 +1,4 @@
+import json
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 
@@ -24,7 +25,14 @@ DISTANCE_BUCKETS = [
     ("15 km+", 15000, float("inf")),
 ]
 
-HEATMAP_WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+HEATMAP_WEEKDAY_LABELS = {
+    "zh": ["日", "一", "二", "三", "四", "五", "六"],
+    "en": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+}
+HEATMAP_MONTH_LABELS = {
+    "zh": ["1 月", "2 月", "3 月", "4 月", "5 月", "6 月", "7 月", "8 月", "9 月", "10 月", "11 月", "12 月"],
+    "en": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+}
 HEATMAP_LEVELS = [
     (0, 0),
     (1, 0.01),
@@ -47,6 +55,13 @@ def parse_duration_to_seconds(value):
     return int(float(value))
 
 
+def format_seconds_to_hms(value):
+    total_seconds = max(int(round(float(value or 0))), 0)
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+
 def filter_runs(items):
     runs = []
     for item in items:
@@ -65,8 +80,30 @@ def filter_runs(items):
             if distance > 0 and moving_seconds > 0
             else None
         )
+        run["location_region"] = parse_location_region(run.get("location_region_json"))
         runs.append(run)
     return runs
+
+
+def parse_location_region(value):
+    if isinstance(value, dict):
+        return value
+    if not value:
+        return {}
+    try:
+        data = json.loads(value)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def build_location_label(run, unknown_label="Unknown"):
+    region = run.get("location_region") or parse_location_region(run.get("location_region_json"))
+    for key in ("city", "province", "country"):
+        value = str(region.get(key) or "").strip()
+        if value:
+            return value
+    return unknown_label
 
 
 def load_runs(conn):
@@ -155,8 +192,10 @@ def get_heatmap_level(distance):
     return level
 
 
-def build_heatmap_data(items, weeks=26, today=None):
+def build_heatmap_data(items, weeks=26, today=None, lang="en"):
     runs = filter_runs(items)
+    weekday_labels = HEATMAP_WEEKDAY_LABELS.get(lang, HEATMAP_WEEKDAY_LABELS["en"])
+    month_labels_lookup = HEATMAP_MONTH_LABELS.get(lang, HEATMAP_MONTH_LABELS["en"])
     distance_by_date = defaultdict(float)
     for run in runs:
         distance_by_date[run["date"].date().isoformat()] += float(run.get("distance") or 0) / 1000
@@ -168,14 +207,14 @@ def build_heatmap_data(items, weeks=26, today=None):
     month_labels = []
     seen_months = set()
     visible_month = first_week_start.strftime("%Y-%m")
-    month_labels.append({"label": first_week_start.strftime("%b"), "column": 1})
+    month_labels.append({"label": month_labels_lookup[first_week_start.month - 1], "column": 1})
     seen_months.add(visible_month)
 
     weeks_data = []
     for week_index in range(weeks):
         week_start = first_week_start + timedelta(weeks=week_index)
         days = []
-        for day_offset, weekday_label in enumerate(HEATMAP_WEEKDAY_LABELS):
+        for day_offset, weekday_label in enumerate(weekday_labels):
             cell_date = week_start + timedelta(days=day_offset)
             date_key = cell_date.isoformat()
             distance = round(distance_by_date.get(date_key, 0.0), 2)
@@ -191,7 +230,7 @@ def build_heatmap_data(items, weeks=26, today=None):
             if cell_date.day == 1 and month_key not in seen_months:
                 month_labels.append(
                     {
-                        "label": cell_date.strftime("%b"),
+                        "label": month_labels_lookup[cell_date.month - 1],
                         "column": week_index + 1,
                     }
                 )
@@ -205,7 +244,7 @@ def build_heatmap_data(items, weeks=26, today=None):
 
     return {
         "weeks": weeks_data,
-        "weekday_labels": HEATMAP_WEEKDAY_LABELS,
+        "weekday_labels": weekday_labels,
         "month_labels": month_labels,
     }
 
@@ -224,6 +263,43 @@ def build_completion_summary(workouts):
     }
 
 
+def build_yearly_stats(items):
+    yearly = defaultdict(lambda: {"count": 0, "distance": 0.0, "elevation": 0.0})
+    for run in filter_runs(items):
+        year = str(run["date"].year)
+        yearly[year]["count"] += 1
+        yearly[year]["distance"] += float(run.get("distance") or 0) / 1000
+        yearly[year]["elevation"] += float(run.get("elevation_gain") or 0)
+    return [
+        {
+            "year": year,
+            "count": yearly[year]["count"],
+            "distance": round(yearly[year]["distance"], 2),
+            "elevation": round(yearly[year]["elevation"], 1),
+        }
+        for year in sorted(yearly.keys(), reverse=True)
+    ]
+
+
+def build_location_stats(items, unknown_label="Unknown"):
+    grouped = defaultdict(lambda: {"count": 0, "distance": 0.0})
+    for run in filter_runs(items):
+        label = build_location_label(run, unknown_label=unknown_label)
+        grouped[label]["count"] += 1
+        grouped[label]["distance"] += float(run.get("distance") or 0) / 1000
+    return sorted(
+        [
+            {
+                "location": location,
+                "count": values["count"],
+                "distance": round(values["distance"], 2),
+            }
+            for location, values in grouped.items()
+        ],
+        key=lambda item: (-item["distance"], -item["count"], item["location"]),
+    )
+
+
 def build_prs(items):
     runs = filter_runs(items)
     records = []
@@ -235,7 +311,23 @@ def build_prs(items):
             and run["pace_seconds"] is not None
         ]
         best = min(candidates, key=lambda run: run["pace_seconds"], default=None)
-        records.append({"label": label, "target": target_distance, "run": best})
+        estimated_seconds = (
+            round(best["pace_seconds"] * (target_distance / 1000))
+            if best and best["pace_seconds"] is not None
+            else None
+        )
+        records.append(
+            {
+                "label": label,
+                "target": target_distance,
+                "run": best,
+                "estimated_seconds": estimated_seconds,
+                "result_label": format_seconds_to_hms(estimated_seconds)
+                if estimated_seconds is not None
+                else "",
+                "date_label": best["date"].strftime("%Y-%m-%d") if best else "",
+            }
+        )
     return records
 
 

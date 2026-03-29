@@ -1,29 +1,37 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="{{ 'zh-CN' if current_lang == 'zh' else 'en' }}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ page_title }} | Keep Training Coach</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+    <title>{{ t(page_title_key) }} | {{ t('brand') }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css', v=static_asset_version) }}">
   </head>
-  <body>
+  <body data-plan-job-status-url="{{ url_for_lang('plan_job_status_latest') }}">
     <div class="page-shell">
       <aside class="sidebar">
-        <div class="brand">Keep Training Coach</div>
+        <div class="brand">{{ t('brand') }}</div>
         <nav class="nav">
-          <a href="{{ url_for('index') }}">Home</a>
-          <a href="{{ url_for('analysis') }}">Analysis</a>
-          <a href="{{ url_for('plans') }}">Plans</a>
-          <a href="{{ url_for('settings') }}">Settings</a>
+          <a href="{{ url_for_lang('index') }}" class="{{ nav_active('index') }}">{{ t('nav.home') }}</a>
+          <a href="{{ url_for_lang('analysis') }}" class="{{ nav_active('analysis') }}">{{ t('nav.analysis') }}</a>
+          <a href="{{ url_for_lang('activities') }}" class="{{ nav_active(['activities', 'activity_detail']) }}">{{ t('nav.activities') }}</a>
+          <a href="{{ url_for_lang('plans') }}" class="{{ nav_active('plans') }}">{{ t('nav.plans') }}</a>
+          <a href="{{ url_for_lang('settings') }}" class="{{ nav_active('settings') }}">{{ t('nav.settings') }}</a>
         </nav>
       </aside>
       <main class="content">
         <header class="page-header">
-          <h1>{{ page_title }}</h1>
+          <div class="page-header-bar">
+            <h1>{{ t(page_title_key) }}</h1>
+            <div class="lang-switch">
+              <a href="{{ switch_lang_url('zh') }}" class="{{ 'is-active' if current_lang == 'zh' else '' }}">{{ t('lang.zh') }}</a>
+              <a href="{{ switch_lang_url('en') }}" class="{{ 'is-active' if current_lang == 'en' else '' }}">{{ t('lang.en') }}</a>
+            </div>
+          </div>
         </header>
         {% block content %}{% endblock %}
       </main>
     </div>
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script id="app-copy" type="application/json">{{ js_copy | tojson }}</script>
+    <script src="{{ url_for('static', filename='app.js', v=static_asset_version) }}"></script>
   </body>
 </html>

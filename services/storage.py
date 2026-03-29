@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS activities (
     average_heartrate REAL,
     average_speed REAL,
     elevation_gain REAL,
-    summary_polyline TEXT
+    summary_polyline TEXT,
+    location_region_json TEXT
 );
 
 CREATE TABLE IF NOT EXISTS training_plans (
@@ -70,6 +71,19 @@ CREATE TABLE IF NOT EXISTS daily_logs (
     updated_at TEXT NOT NULL,
     FOREIGN KEY(plan_workout_id) REFERENCES plan_workouts(id)
 );
+
+CREATE TABLE IF NOT EXISTS plan_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_type TEXT NOT NULL,
+    status TEXT NOT NULL,
+    language TEXT NOT NULL,
+    result_plan_id INTEGER,
+    error_message TEXT,
+    created_at TEXT NOT NULL,
+    started_at TEXT,
+    finished_at TEXT,
+    FOREIGN KEY(result_plan_id) REFERENCES training_plans(id)
+);
 """
 
 
@@ -93,12 +107,17 @@ def init_db(db_path):
     conn = get_connection(db_path)
     try:
         conn.executescript(SCHEMA)
+        ensure_column(conn, "activities", "location_region_json", "location_region_json TEXT")
         ensure_column(conn, "training_plans", "is_active", "is_active INTEGER NOT NULL DEFAULT 0")
         ensure_column(conn, "training_plans", "source_model_key", "source_model_key TEXT")
         ensure_column(conn, "training_plans", "replaced_plan_id", "replaced_plan_id INTEGER")
         ensure_column(conn, "plan_workouts", "is_replaced", "is_replaced INTEGER NOT NULL DEFAULT 0")
         ensure_column(conn, "plan_workouts", "replaced_at", "replaced_at TEXT")
         ensure_column(conn, "plan_workouts", "replaced_by_plan_id", "replaced_by_plan_id INTEGER")
+        ensure_column(conn, "plan_jobs", "result_plan_id", "result_plan_id INTEGER")
+        ensure_column(conn, "plan_jobs", "error_message", "error_message TEXT")
+        ensure_column(conn, "plan_jobs", "started_at", "started_at TEXT")
+        ensure_column(conn, "plan_jobs", "finished_at", "finished_at TEXT")
         conn.commit()
     finally:
         conn.close()

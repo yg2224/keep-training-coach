@@ -1,0 +1,105 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="card">
+  <div class="section-head detail-head">
+    <div>
+      <p class="section-kicker">{{ t('activities.detail_kicker') }}</p>
+      <h2>{{ activity.name }}</h2>
+      <p class="muted-text">{{ activity.start_date_local }}</p>
+    </div>
+    <div class="detail-head-actions">
+      {% if activity.route_points %}
+      <a class="ghost-button" href="{{ url_for_lang('activity_export_gpx', run_id=activity.run_id) }}">{{ t('activities.export_gpx') }}</a>
+      <a class="ghost-button" href="{{ url_for('activity_export_gpx', run_id=activity.run_id, privacy=1, lang=current_lang) }}">{{ t('activities.export_private_gpx') }}</a>
+      {% endif %}
+      <a class="ghost-button" href="{{ url_for_lang('activities') }}">{{ t('activities.back_to_list') }}</a>
+    </div>
+  </div>
+</section>
+
+<section class="card-grid activity-detail-grid">
+  <article class="card detail-item">
+    <h3>{{ t('activities.distance') }}</h3>
+    <p>{{ (activity.distance / 1000) | round(2) }} km</p>
+  </article>
+  <article class="card detail-item">
+    <h3>{{ t('activities.duration') }}</h3>
+    <p>{{ activity.moving_time }}</p>
+  </article>
+  <article class="card detail-item">
+    <h3>{{ t('activities.elapsed_time') }}</h3>
+    <p>{{ activity.elapsed_time or t('common.not_set') }}</p>
+  </article>
+  <article class="card detail-item">
+    <h3>{{ t('activities.pace') }}</h3>
+    <p>{{ format_pace(activity.pace_seconds) }}</p>
+  </article>
+  <article class="card detail-item">
+    <h3>{{ t('activities.heartrate') }}</h3>
+    <p>{{ activity.average_heartrate or t('common.not_set') }}</p>
+  </article>
+  <article class="card detail-item">
+    <h3>{{ t('activities.elevation') }}</h3>
+    <p>{{ activity.elevation_gain or t('common.not_set') }}</p>
+  </article>
+</section>
+
+{% if activity.route_preview %}
+<section class="card activity-route-card">
+  <div class="section-head detail-head">
+    <div>
+      <p class="section-kicker">{{ t('activities.detail_kicker') }}</p>
+      <h2>{{ t('activities.route_preview') }}</h2>
+      <p class="muted-text">{{ activity.route_preview.point_count }} {{ t('activities.route_points') }}</p>
+    </div>
+  </div>
+  <div class="activity-route-frame">
+    <svg
+      class="activity-route-svg"
+      viewBox="0 0 {{ activity.route_preview.width }} {{ activity.route_preview.height }}"
+      preserveAspectRatio="xMidYMid meet"
+      aria-label="{{ t('activities.route_preview') }}"
+    >
+      <polyline
+        class="activity-route-line"
+        fill="none"
+        points="{{ activity.route_preview.polyline }}"
+      ></polyline>
+      <circle class="activity-route-start" cx="{{ activity.route_preview.start.x }}" cy="{{ activity.route_preview.start.y }}" r="7"></circle>
+      <circle class="activity-route-end" cx="{{ activity.route_preview.end.x }}" cy="{{ activity.route_preview.end.y }}" r="7"></circle>
+    </svg>
+  </div>
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>{{ t('activities.detail_title') }}</h2>
+  <div class="detail-grid">
+    <div class="detail-row">
+      <strong>{{ t('activities.run_id') }}</strong>
+      <span>{{ activity.run_id }}</span>
+    </div>
+    <div class="detail-row">
+      <strong>{{ t('activities.type') }}</strong>
+      <span>{{ activity.type }}</span>
+    </div>
+    <div class="detail-row">
+      <strong>{{ t('activities.subtype') }}</strong>
+      <span>{{ activity.subtype }}</span>
+    </div>
+    <div class="detail-row">
+      <strong>{{ t('activities.start_time') }}</strong>
+      <span>{{ activity.start_date_local }}</span>
+    </div>
+    <div class="detail-row">
+      <strong>{{ t('activities.average_speed') }}</strong>
+      <span>{{ activity.average_speed or t('common.not_set') }}</span>
+    </div>
+    <div class="detail-row">
+      <strong>{{ t('activities.summary_polyline') }}</strong>
+      <span>{{ t('activities.route_points_count', count=activity.route_points|length) if activity.route_points else t('common.not_set') }}</span>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="card">
+  <div class="section-head">
+    <div>
+      <p class="section-kicker">{{ t('activities.kicker') }}</p>
+      <h2>{{ t('activities.title') }}</h2>
+      <p class="muted-text">{{ t('activities.subtitle') }}</p>
+    </div>
+    <div class="activity-count-badge">{{ activities|length }} {{ t('activities.count_suffix') }}</div>
+  </div>
+
+  {% if activities %}
+  <div class="table-shell">
+    <table class="activity-table">
+      <thead>
+        <tr>
+          <th>{{ t('activities.date') }}</th>
+          <th>{{ t('activities.name') }}</th>
+          <th>{{ t('activities.distance') }}</th>
+          <th>{{ t('activities.duration') }}</th>
+          <th>{{ t('activities.pace') }}</th>
+          <th>{{ t('activities.heartrate') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for activity in activities %}
+        <tr>
+          <td>{{ activity.start_date_local }}</td>
+          <td>
+            <a class="activity-row-link" href="{{ url_for_lang('activity_detail', run_id=activity.run_id) }}">{{ activity.name }}</a>
+          </td>
+          <td>{{ (activity.distance / 1000) | round(2) }} km</td>
+          <td>{{ activity.moving_time }}</td>
+          <td>{{ format_pace(activity.pace_seconds) }}</td>
+          <td>{{ activity.average_heartrate or t('common.not_set') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p>{{ t('activities.empty') }}</p>
+  {% endif %}
+</section>
+{% endblock %}

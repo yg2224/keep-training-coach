@@ -1,6 +1,8 @@
+import json
 from datetime import datetime, timezone
 
 import requests
+from services.routes import extract_route_points, has_dense_route, serialize_route_points
 
 KEEP_SPORT_TYPES = ["running", "hiking", "cycling"]
 KEEP2STRAVA = {
@@ -79,6 +81,8 @@ def parse_keep_activity(run_data):
     heart_rate = payload.get("heartRate", {}).get("averageHeartRate")
     duration = payload.get("duration") or 0
     distance = float(payload.get("distance") or 0)
+    route_points = extract_route_points(payload, max_points=None)
+    region = payload.get("region") or {}
 
     return {
         "run_id": str(keep_id),
@@ -93,7 +97,8 @@ def parse_keep_activity(run_data):
         "average_heartrate": heart_rate if heart_rate and heart_rate > 0 else None,
         "average_speed": distance / duration if duration else 0,
         "elevation_gain": None,
-        "summary_polyline": "",
+        "summary_polyline": serialize_route_points(route_points),
+        "location_region_json": json.dumps(region, ensure_ascii=False, separators=(",", ":")),
     }
 
 
@@ -113,8 +118,9 @@ def upsert_activity(conn, activity):
             average_heartrate,
             average_speed,
             elevation_gain,
-            summary_polyline
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            summary_polyline,
+            location_region_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(run_id) DO UPDATE SET
             name = excluded.name,
             type = excluded.type,
@@ -127,7 +133,8 @@ def upsert_activity(conn, activity):
             average_heartrate = excluded.average_heartrate,
             average_speed = excluded.average_speed,
             elevation_gain = excluded.elevation_gain,
-            summary_polyline = excluded.summary_polyline
+            summary_polyline = excluded.summary_polyline,
+            location_region_json = excluded.location_region_json
         """,
         (
             activity["run_id"],
@@ -143,6 +150,7 @@ def upsert_activity(conn, activity):
             activity["average_speed"],
             activity["elevation_gain"],
             activity["summary_polyline"],
+            activity["location_region_json"],
         ),
     )
     conn.commit()
@@ -162,14 +170,25 @@ def sync_keep_activities(db_path, phone_number, password, sync_types=None):
     synced = 0
     errors = []
     try:
-        existing_ids = {
-            row["run_id"] for row in conn.execute("SELECT run_id FROM activities").fetchall()
+        existing_rows = {
+            row["run_id"]: {
+                "summary_polyline": row["summary_polyline"],
+                "location_region_json": row["location_region_json"],
+            }
+            for row in conn.execute(
+                "SELECT run_id, summary_polyline, location_region_json FROM activities"
+            ).fetchall()
         }
         for sport_type in sync_types:
             for run_id in get_to_download_run_ids(session, headers, sport_type):
                 try:
                     keep_id = run_id.split("_")[1]
-                    if keep_id in existing_ids:
+                    existing = existing_rows.get(keep_id)
+                    if (
+                        existing
+                        and has_dense_route(existing["summary_polyline"])
+                        and existing["location_region_json"]
+                    ):
                         continue
                     raw_run = get_single_run_data(session, headers, run_id, sport_type)
                     upsert_activity(conn, parse_keep_activity(raw_run))

@@ -1,0 +1,24 @@
+<div id="plans-results">
+  <section class="card">
+    <h2>{{ t('plans.latest_plan') }}</h2>
+    {% if latest_plan %}
+    <pre class="markdown-block">{{ latest_plan.plan_markdown }}</pre>
+    <p class="muted-text">{{ t('plans.model_key') }}: {{ latest_plan.source_model_key }}</p>
+    {% else %}
+    <p>{{ t('plans.no_plan') }}</p>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>{{ t('plans.workouts') }}</h2>
+    {% if workouts %}
+    <ul>
+      {% for workout in workouts %}
+      <li>{{ workout.plan_date }} - {{ workout.title }} - {{ status_label(workout.status) }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>{{ t('plans.no_workouts') }}</p>
+    {% endif %}
+  </section>
+</div>
