@@ -40,6 +40,11 @@
       {% if item.workout_type %}
       <span class="calendar-day-type">{{ item.workout_type }}</span>
       {% endif %}
+      {% if item.activity_distance_km %}
+      <span class="calendar-day-activity">
+        {{ t('home.day_run_summary', distance=item.activity_distance_km) }}
+      </span>
+      {% endif %}
       {% if item.completed %}
       <span class="calendar-day-status status-{{ item.completed }}">{{ status_label(item.completed) }}</span>
       {% endif %}

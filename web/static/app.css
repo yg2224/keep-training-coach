@@ -321,6 +321,12 @@ button {
   color: var(--accent);
 }
 
+.calendar-day-activity {
+  font-size: 12px;
+  color: #1f6f78;
+  font-weight: 700;
+}
+
 .calendar-day-status {
   margin-top: auto;
   width: fit-content;

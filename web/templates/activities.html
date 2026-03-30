@@ -32,7 +32,7 @@
             <a class="activity-row-link" href="{{ url_for_lang('activity_detail', run_id=activity.run_id) }}">{{ activity.name }}</a>
           </td>
           <td>{{ (activity.distance / 1000) | round(2) }} km</td>
-          <td>{{ activity.moving_time }}</td>
+          <td>{{ format_duration(activity.moving_time) }}</td>
           <td>{{ format_pace(activity.pace_seconds) }}</td>
           <td>{{ activity.average_heartrate or t('common.not_set') }}</td>
         </tr>

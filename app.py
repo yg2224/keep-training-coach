@@ -15,6 +15,8 @@ from services.analysis import (
     build_monthly_stats,
     build_pace_distribution,
     build_prs,
+    format_seconds_to_hms,
+    parse_duration_to_seconds,
     build_weekly_stats,
     build_yearly_stats,
     load_runs,
@@ -137,9 +139,15 @@ def create_app(test_config=None):
             minutes, seconds = divmod(total_seconds, 60)
             return f"{minutes}:{seconds:02d} /km"
 
+        def format_duration(value):
+            if value in (None, ""):
+                return translate(g.get("lang", DEFAULT_LANGUAGE), "common.not_set")
+            return format_seconds_to_hms(parse_duration_to_seconds(value))
+
         return {
             "current_lang": g.get("lang", DEFAULT_LANGUAGE),
             "calendar_weekdays": get_calendar_weekday_labels(g.get("lang", DEFAULT_LANGUAGE)),
+            "format_duration": format_duration,
             "format_pace": format_pace,
             "js_copy": TRANSLATIONS.get(g.get("lang", DEFAULT_LANGUAGE), TRANSLATIONS[DEFAULT_LANGUAGE]),
             "nav_active": nav_active,
@@ -376,6 +384,27 @@ def create_app(test_config=None):
             for row in log_rows:
                 data = dict(row)
                 logs_by_date.setdefault(data["log_date"], data)
+
+            activity_rows = conn.execute(
+                """
+                SELECT
+                    substr(start_date_local, 1, 10) AS activity_date,
+                    COUNT(*) AS run_count,
+                    ROUND(SUM(distance) / 1000.0, 1) AS distance_km
+                FROM activities
+                WHERE type = 'Run'
+                  AND substr(start_date_local, 1, 7) = ?
+                GROUP BY substr(start_date_local, 1, 10)
+                """,
+                (month_key,),
+            ).fetchall()
+            activities_by_date = {
+                row["activity_date"]: {
+                    "run_count": row["run_count"],
+                    "distance_km": row["distance_km"],
+                }
+                for row in activity_rows
+            }
         finally:
             conn.close()
 
@@ -392,6 +421,7 @@ def create_app(test_config=None):
                     continue
                 workout = workouts_by_date.get(day_key)
                 latest_log = logs_by_date.get(day_key)
+                activity_summary = activities_by_date.get(day_key, {})
                 week_items.append(
                     {
                         "date": day_key,
@@ -402,6 +432,8 @@ def create_app(test_config=None):
                             if latest_log
                             else (workout["status"] if workout else "")
                         ),
+                        "activity_distance_km": activity_summary.get("distance_km"),
+                        "activity_run_count": activity_summary.get("run_count", 0),
                     }
                 )
             weeks.append(week_items)
